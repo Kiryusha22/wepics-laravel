@@ -36,7 +36,7 @@ class AlbumController extends Controller
                     'name'=>basename($picture),
                     'weight'=>Storage::size($picture),
                     'date'=>Carbon::createFromTimestamp(Storage::lastModified($picture)),
-                    'hash'=>Hash::make(Storage::get($picture)),
+                    'hash'=>md5(Storage::get($picture)),
                     'album_id'=>$parentAlbum->id
                 ]);
             $picturesResponse[] = $pictureModel;

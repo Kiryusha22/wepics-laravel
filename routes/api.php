@@ -1,7 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\AlbumController;
+use App\Http\Controllers\ImageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,9 +16,35 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('albums'       , [App\Http\Controllers\AlbumController::class, 'root']);
-Route::get('albums/{hash}', [App\Http\Controllers\AlbumController::class, 'get']);
-
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::group([
+    'controller' => UserController::class,
+    'prefix' => 'auth'
+],function (){
+    Route::post('login', 'login');
+    Route::post('reg'  , 'reg'  );
+    Route::middleware('token.auth')
+        ->get('logout', 'logout');
 });
+
+Route::group([
+    'controller' => ImageController::class,
+    'prefix' => 'images'
+],function (){
+    Route::get('{hash}/orig', 'orig');
+    Route::get('{hash}/thumb/{size}', 'thumb');
+    Route::get('{hash}', 'show');
+
+});
+
+Route::middleware('token.auth')->group(function () {
+
+
+    Route::group([
+        'controller' => AlbumController::class,
+        'prefix' => 'albums'
+    ],function (){
+        Route::get('',       'root');
+        Route::get('{hash}', 'get');
+    });
+});
+

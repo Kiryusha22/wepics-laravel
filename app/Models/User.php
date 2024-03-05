@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -13,11 +14,11 @@ class User extends Authenticatable
     use Notifiable;
 
     protected $fillable = [
-        'name', 'username', 'password', 'role'
+        'nickname', 'password', 'login'
     ];
 
     protected $hidden = [
-        'password', 'remember_token',
+        'password',
     ];
 
     // Связь с моделью AccessRight
@@ -36,5 +37,13 @@ class User extends Authenticatable
     public function tags()
     {
         return $this->hasMany(Tag::class);
+    }
+    public function generateToken(){
+        $token = Token::create([
+            'user_id' => $this->id,
+            'value' => Str::random(255),
+
+        ]);
+        return $token->value;
     }
 }

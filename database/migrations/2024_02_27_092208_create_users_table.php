@@ -15,10 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string("nickname",63);
             $table->string("login", 63);
-            $table->string("password_hash", 255);
-            $table->foreignId('role_id')
-                ->references('id')
-                ->on('roles');
+            $table->string("password", 255);
+            $table->boolean('is_admin')->default(false);
             $table->timestamps();
         });
     }
