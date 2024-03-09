@@ -31,7 +31,7 @@ class ImageController extends Controller
         $imagePath = "images$album->path/$imageDB->name";
         $thumbPath = "thumbs$album->path/$imageDB->name";
 
-        
+
         $thumb = $manager->make(Storage::get($imagePath));
 
         $thumb->resize(300, null, function ($constraint) {
