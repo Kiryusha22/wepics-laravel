@@ -73,7 +73,7 @@ class AlbumController extends Controller
         $allowedSorts = ['name', 'date', 'size'];
         $sortType = (request()->input('sort'));
         if (!in_array($sortType, $allowedSorts))
-            $perPage = $allowedSorts[0];
+            $sortType = $allowedSorts[0];
 
         $perPage = intval(request()->input('per_page'));
         if (!$perPage)

@@ -30,11 +30,11 @@ Route::group([
     'controller' => ImageController::class,
     'prefix' => 'images'
 ],function (){
+    Route::get('{hash}',      'show' );
     Route::get('{hash}/orig', 'orig' );
     Route::get('{hash}/thumb/{orient}/{px}', 'thumb')
         ->where('orient', '[whWH]')
         ->where('px'    , '[0-9]+');
-    Route::get('{hash}',      'show' );
 });
 
 Route::middleware('token.auth')->group(function () {

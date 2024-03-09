@@ -26,7 +26,7 @@ class ImageController extends Controller
         $image = $this->getImageFromDB($hash);
 
         $album = Album::find($image->album_id);
-        $path = Storage::disk("local")->path("images$album->path/$image->name");
+        $path = Storage::disk("local")->path("images$album->path$image->name");
 
         return response()->download($path, basename($path));
     }
@@ -58,9 +58,9 @@ class ImageController extends Controller
             else
                 $thumb->scale(height: $size);
 
-            if(!Storage::exists('thumbs')){
+            if(!Storage::exists('thumbs'))
                 Storage::makeDirectory('thumbs');
-            }
+
             $thumb->toWebp(80)->save(Storage::path($thumbPath));
         }
 
