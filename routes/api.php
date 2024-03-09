@@ -40,8 +40,10 @@ Route::middleware('token.auth')->group(function () {
         'controller' => AlbumController::class,
         'prefix' => 'albums'
     ],function (){
-        Route::get('',       'root');
-        Route::get('{hash}', 'get' );
+        Route::get('',                      'root');
+        Route::get('images/{page?}',        'rootImages');
+        Route::get('{hash}',                'get');
+        Route::get('{hash}/images/{page?}', 'getImages');
     });
 });
 

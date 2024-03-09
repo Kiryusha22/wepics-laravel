@@ -22,20 +22,17 @@ class User extends Authenticatable
     ];
 
     // Связь с моделью AccessRight
-    public function accessRights()
-    {
+    public function accessRights() {
         return $this->hasMany(AccessRight::class);
     }
 
     // Связь с моделью Reaction
-    public function reactions()
-    {
+    public function reactions() {
         return $this->hasMany(Reaction::class);
     }
 
     // Связь с моделью Tag
-    public function tags()
-    {
+    public function tags() {
         return $this->hasMany(Tag::class);
     }
     public function generateToken(){
