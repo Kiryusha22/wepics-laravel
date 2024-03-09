@@ -6,66 +6,65 @@ use App\Exceptions\ApiException;
 use App\Models\Album;
 use App\Models\Picture;
 use Illuminate\Http\Request;
-use Intervention\Image\ImageManagerStatic as Image;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Storage;
 
 class ImageController extends Controller
 {
-    public function orig($hash){
+    public function getImageFromDB($hash) {
         $image = Picture::where('hash', $hash)->first();
         if(!$image)
-            throw new ApiException(404, 'Image not found');
+            throw new ApiException(404, "Image with hash \"$hash\" not found");
+        return $image;
+    }
+    public function show($hash) {
+        $image = $this->getImageFromDB($hash);
+        return response($image);
+    }
+    public function orig($hash) {
+        $image = $this->getImageFromDB($hash);
 
         $album = Album::find($image->album_id);
         $path = Storage::disk("local")->path("images$album->path/$image->name");
 
         return response()->download($path, basename($path));
     }
-    public function thumb($hash, $size) {
-        $imageDB = Picture::where('hash', $hash)->first();
-        if(!$imageDB)
-            throw new ApiException(404, 'Image not found');
+    public function thumb($hash, $orientation, $size) {
+        $image = $this->getImageFromDB($hash);
 
-        $album = Album::find($imageDB->album_id);
+        $allowedSizes = [200, 300, 400, 600, 900];
+        $allow = false;
+        foreach ($allowedSizes as $allowedSize) {
+            if ($size <= $allowedSize) {
+                $size = $allowedSize;
+                $allow = true;
+                break;
+            }
+        }
+        if (!$allow) $size = max($allowedSizes);
 
-        $imagePath = "images$album->path/$imageDB->name";
-        $thumbPath = "thumbs$album->path/$imageDB->name";
+        $album = Album::find($image->album_id);
 
+        $imagePath = "images$album->path$image->name";
+        $thumbPath = "thumbs$album->path$image->name-$orientation$size.webp";
 
-        $thumb = $manager->make(Storage::get($imagePath));
+        if (!Storage::exists($thumbPath)) {
+            $manager = new ImageManager(new Driver());
+            $thumb = $manager->read(Storage::get($imagePath));
 
-        $thumb->resize(300, null, function ($constraint) {
-            $constraint->aspectRatio();
-        });
+            if ($orientation == 'w')
+                $thumb->scale(width: $size);
+            else
+                $thumb->scale(height: $size);
 
-        $thumb->encode('webp', 80)->save(Storage::path($thumbPath));
+            if(!Storage::exists('thumbs')){
+                Storage::makeDirectory('thumbs');
+            }
+            $thumb->toWebp(80)->save(Storage::path($thumbPath));
+        }
 
-        /*
-        $imageDB = Picture::where('hash', $hash)->first();
-        if(!$imageDB)
-            throw new ApiException(404, 'Image not found');
-        $album = Album::find($imageDB->album_id);
-        $sourcePath = Storage::disk("local")->path("images$album->path/$imageDB->name");
-        $thumbPath = "thumbs$album->path/$imageDB->name";
-
-        list($width, $height) = getimagesize($sourcePath);
-        $ratio = $width / $height;
-        $desiredHeight = (int)($size / $ratio);
-
-        $image = imagecreatefromstring(file_get_contents($sourcePath));
-        $thumb = imagecreatetruecolor($size, $desiredHeight);
-
-        imagecopyresampled($thumb, $image, 0, 0, 0, 0, $size, $desiredHeight, $width, $height);
-
-
-        //TODO Происходит какая то фигатень
-        imagejpeg($thumb, $thumbPath);
-
-        imagedestroy($image);
-        imagedestroy($thumb);
-        */
-    }
-    public function show(){
-
+        $path = Storage::disk("local")->path($thumbPath);
+        return response()->download($path, basename($path));
     }
 }
