@@ -22,4 +22,7 @@ class Tag extends Model
     public function tagGroup() {
         return $this->belongsTo(TagGroup::class);
     }
+    static public function findFromString($string) {
+        return Tag::where('value', $string)->first();
+    }
 }
