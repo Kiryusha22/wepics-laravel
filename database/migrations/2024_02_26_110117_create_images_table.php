@@ -8,12 +8,15 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('albums', function (Blueprint $table) {
+        Schema::create('images', function (Blueprint $table) {
             $table->id();
             $table->string   ('name', 127);
-            $table->string   ('path', 511);
-            $table->string   ('hash', 25)->unique();
-            $table->foreignId('parent_album_id')
+            $table->string   ('hash', 32)->unique();
+            $table->dateTime ('date');
+            $table->integer  ('size');
+            $table->integer  ('width');
+            $table->integer  ('height');
+            $table->foreignId('album_id')
                 ->nullable()
                 ->references('id')
                 ->on('albums')
@@ -25,6 +28,6 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('albums');
+        Schema::dropIfExists('images');
     }
 };

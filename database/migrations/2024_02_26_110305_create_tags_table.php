@@ -4,17 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateTagsTable extends Migration
+return new class extends Migration
 {
     public function up()
     {
         Schema::create('tags', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('picture_id');
-            $table->string('tag');
+            $table->string('value', 63)->unique();
             $table->timestamps();
-
-            $table->foreign('picture_id')->references('id')->on('pictures')->onDelete('cascade');
         });
     }
 
@@ -22,4 +19,4 @@ class CreateTagsTable extends Migration
     {
         Schema::dropIfExists('tags');
     }
-}
+};

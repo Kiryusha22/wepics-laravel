@@ -6,30 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('tags_pictures', function (Blueprint $table) {
-            $table->foreignId('picture_id')
+        Schema::create('tag_image', function (Blueprint $table) {
+            $table->foreignId('image_id')
                 ->references('id')
-                ->on('pictures')
-                ->onDelete('cascade');
+                ->on('images')
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
             $table->foreignId('tag_id')
                 ->references('id')
                 ->on('tags')
-                ->onDelete('cascade');
-            $table->timestamps();
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
+            $table->primary(['image_id', 'tag_id']);
         });
     }
 
-
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('tag_picture');
+        Schema::dropIfExists('tag_image');
     }
 };
