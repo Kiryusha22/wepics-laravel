@@ -64,24 +64,6 @@ class AlbumController extends Controller
         $path = "images$parentAlbum->path";
         $files = Storage::files($path);
 
-        $searchedTags = null;
-        $tagsString = request()->input('tags');
-        if ($tagsString)
-            $searchedTags = explode(',', $tagsString);
-
-        $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
-        $sortType = (request()->input('sort'));
-        if (!$sortType)
-            $sortType = $allowedSorts[0];
-
-        $isReverseSort = request()->has('reverse');
-
-        $perPage = intval(request()->input('per_page'));
-        if (!$perPage)
-            $perPage = 30;
-
-        // TODO: Сделать фильтрацию по тегам, сортировку и страницизацию через данные в базе
-
         $images = array_filter($files, function ($file) {
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webm'];
             $extension = pathinfo($file, PATHINFO_EXTENSION);
@@ -107,10 +89,41 @@ class AlbumController extends Controller
                     'album_id' => $parentAlbum->id,
                 ]);
             }
-            $imagesResponse[] = ImageResource::make($imageModel);
         }
-        if (!$imagesResponse)
-            throw new ApiException(200, 'Empty album or ');
+        $searchedTags = null;
+        $tagsString = $request->input('tags');
+        if ($tagsString)
+            $searchedTags = explode(',', $tagsString);
+
+        $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
+        $sortType = ($request->input('sort'));
+        if (!$sortType)
+            $sortType = $allowedSorts[0];
+
+        $isReverse = $request->has('reverse');
+
+        $perPage = intval($request->input('per_page'));
+        if (!$perPage)
+            $perPage = 30;
+
+        if (!$searchedTags) {
+            $imagesFromDB = Image
+                ::where('album_id', $parentAlbum->id)
+                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->paginate($perPage);
+        }
+        else {
+            $imagesFromDB = Image
+                ::where('album_id', $parentAlbum->id)
+                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->withAllTags($searchedTags)
+                ->paginate($perPage);
+        }
+
+        $imagesResponse = ImageResource::collection($imagesFromDB);
+
+        if (count($imagesResponse) < 1)
+            throw new ApiException(200, 'Empty album or no images with entered tags');
         return response($imagesResponse);
     }
 }
