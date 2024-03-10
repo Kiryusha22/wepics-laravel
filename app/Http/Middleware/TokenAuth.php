@@ -15,20 +15,25 @@ class TokenAuth
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next, $allowedLevel = 'user')
     {
         $tokenValue = $request->bearerToken();
+
         if (!$tokenValue) {
-            throw new ApiException(401, 'Token not provided');
+            if (!$allowedLevel == 'guest')
+                throw new ApiException(401, 'Token not provided');
+        }
+        else {
+            $tokenDB = Token::where('value', $tokenValue)->first();
+            if (!$tokenDB)
+                throw new ApiException(401, 'Invalid token');
+
+            $request->sender = $tokenDB->user;
+            if ($allowedLevel == 'admin' &&
+                !$request->sender->is_admin)
+                throw new ApiException(401, 'Forbidden for you');
         }
 
-        $token = Token::where('value', $tokenValue)->first();
-        if (!$token) {
-            throw new ApiException(401, 'Invalid token');
-        }
-
-        $request->sender = $token->user;
         return $next($request);
     }
-
 }
