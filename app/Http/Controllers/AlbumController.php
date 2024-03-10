@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ApiException;
+use App\Http\Resources\ImageResource;
 use App\Models\Album;
-use App\Models\Picture;
+use App\Models\Image;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -70,10 +73,12 @@ class AlbumController extends Controller
         if ($tagsString)
             $searchedTags = explode(',', $tagsString);
 
-        $allowedSorts = ['name', 'date', 'size'];
+        $allowedSorts = ['name', 'date', 'size', 'width', 'height', 'ratio'];
         $sortType = (request()->input('sort'));
         if (!in_array($sortType, $allowedSorts))
             $sortType = $allowedSorts[0];
+
+        $isReverseSort = request()->has('reverse');
 
         $perPage = intval(request()->input('per_page'));
         if (!$perPage)
@@ -81,27 +86,34 @@ class AlbumController extends Controller
 
         // TODO: Сделать фильтрацию по тегам, сортировку и страницизацию через данные в базе
 
-        $pictures = array_filter($files, function ($file) {
+        $images = array_filter($files, function ($file) {
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webm'];
             $extension = pathinfo($file, PATHINFO_EXTENSION);
             return in_array($extension, $allowedExtensions);
         });
 
-        $picturesResponse = [];
-        foreach ($pictures as $picture){
-            $pictureModel = Picture::where('name', basename($picture))->first();
-            if(!$pictureModel)
-                $pictureModel = Picture::create([
-                    'name' => basename($picture),
-                    'size' => Storage::size($picture),
-                    'date' => Carbon::createFromTimestamp(Storage::lastModified($picture)),
-                    'hash' => md5(Storage::get($picture)),
-                    'album_id' => $parentAlbum->id
+        $imagesResponse = [];
+        foreach ($images as $image) {
+            $imageModel = Image
+                ::where('name', basename($image))
+                ->where('album_id', $parentAlbum->id)
+                ->first();
+            if(!$imageModel) {
+                $manager = new ImageManager(new Driver());
+                $imageFile = $manager->read(Storage::path($image));
+
+                $imageModel = Image::create([
+                    'name'     => basename($image),
+                    'hash'     => md5(Storage::get($image)),
+                    'date'     => Carbon::createFromTimestamp(Storage::lastModified($image)),
+                    'size'     => Storage::size($image),
+                    'width'    => $imageFile->width(),
+                    'height'   => $imageFile->height(),
+                    'album_id' => $parentAlbum->id,
                 ]);
-            $picturesResponse[] = $pictureModel;
+            }
+            $imagesResponse[] = ImageResource::make($imageModel);
         }
-        return response([
-            'pictures' => $picturesResponse,
-        ]);
+        return response($imagesResponse);
     }
 }
