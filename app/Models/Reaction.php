@@ -11,10 +11,10 @@ class Reaction extends Model
         'picture_id', 'reaction', 'user_id'
     ];
 
-    // Связь с моделью Picture
+    // Связь с моделью Image
     public function picture()
     {
-        return $this->belongsTo(Picture::class);
+        return $this->belongsTo(Image::class);
     }
 
     // Связь с моделью User
