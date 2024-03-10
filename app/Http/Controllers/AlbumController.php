@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SortTypesEnum;
 use App\Exceptions\ApiException;
+use App\Http\Requests\AlbumImagesRequest;
 use App\Http\Resources\ImageResource;
 use App\Models\Album;
 use App\Models\Image;
@@ -16,12 +18,6 @@ use Illuminate\Support\Str;
 
 class AlbumController extends Controller
 {
-    public function root() {
-        return $this->get();
-    }
-    public function rootImages(int $page = 1) {
-        return $this->getImages(page: $page);
-    }
     public function getAlbumFromDB($hash) {
         if ($hash) {
             $album = Album::where('hash', $hash)->first();
@@ -62,7 +58,7 @@ class AlbumController extends Controller
             'albums' => $albumResponse,
         ]);
     }
-    public function getImages($hash = null, int $page = 1) {
+    public function getImages(AlbumImagesRequest $request, $hash = null) {
         $parentAlbum = $this->getAlbumFromDB($hash);
 
         $path = "images$parentAlbum->path";
@@ -73,9 +69,9 @@ class AlbumController extends Controller
         if ($tagsString)
             $searchedTags = explode(',', $tagsString);
 
-        $allowedSorts = ['name', 'date', 'size', 'width', 'height', 'ratio'];
+        $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
         $sortType = (request()->input('sort'));
-        if (!in_array($sortType, $allowedSorts))
+        if (!$sortType)
             $sortType = $allowedSorts[0];
 
         $isReverseSort = request()->has('reverse');
@@ -92,7 +88,6 @@ class AlbumController extends Controller
             return in_array($extension, $allowedExtensions);
         });
 
-        $imagesResponse = [];
         foreach ($images as $image) {
             $imageModel = Image
                 ::where('name', basename($image))
@@ -114,6 +109,8 @@ class AlbumController extends Controller
             }
             $imagesResponse[] = ImageResource::make($imageModel);
         }
+        if (!$imagesResponse)
+            throw new ApiException(200, 'Empty album or ');
         return response($imagesResponse);
     }
 }

@@ -39,13 +39,13 @@ Route::middleware('token.auth:guest')->group(function () {
     ::controller(AlbumController::class)
     ->prefix('albums')
     ->group(function () {
-        Route::get   ('',                      'root');
-        Route::get   ('images/{page?}',        'rootImages');
-        Route::get   ('{hash}',                'get');
-        Route::get   ('{hash}/images/{page?}', 'getImages');
-        Route::post  ('{hash}',                'create');
-        Route::post  ('{hash}/images/{page?}', 'uploadImages');
-        Route::delete('{hash}',                'destroy');
+        Route::get   ('images',        'getImages');
+        Route::get   ('{hash}/images', 'getImages');
+        Route::get   ('{hash?}',       'get'   )->defaults('hash', null);
+        Route::post  ('{hash?}',       'create')->defaults('hash', null);
+        Route::post  ('images',        'uploadImages');
+        Route::post  ('{hash}/images', 'uploadImages');
+        Route::delete('{hash}',        'destroy');
 
         Route
         ::controller(AccessController::class)

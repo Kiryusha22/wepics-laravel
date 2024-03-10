@@ -12,8 +12,8 @@ class ApiRequest extends FormRequest
     {
         throw new ApiException(422, $validator->errors());
     }
-    public function failedAuthorization()
-    {
-        throw new ApiException(403, 'Login failed');
-    }
+//    public function failedAuthorization()
+//    {
+//        throw new ApiException(403, 'Login failed');
+//    }
 }
