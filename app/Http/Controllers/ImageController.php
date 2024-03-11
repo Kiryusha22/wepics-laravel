@@ -47,7 +47,7 @@ class ImageController extends Controller
         $album = Album::find($image->album_id);
 
         $imagePath = "images$album->path$image->name";
-        $thumbPath = "thumbs$album->path$image->name-$orientation$size.webp";
+        $thumbPath = "thumbs/$image->hash-$orientation$size.webp";
 
         if (!Storage::exists($thumbPath)) {
             $manager = new ImageManager(new Driver());

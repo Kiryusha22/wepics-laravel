@@ -69,7 +69,7 @@ class AlbumController extends Controller
             $extension = pathinfo($file, PATHINFO_EXTENSION);
             return in_array($extension, $allowedExtensions);
         });
-
+        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
         foreach ($images as $image) {
             $imageModel = Image
                 ::where('name', basename($image))
@@ -89,6 +89,7 @@ class AlbumController extends Controller
                     'album_id' => $parentAlbum->id,
                 ]);
             }
+            // FIXME: надо удалять не найденные картинки из БД
         }
         $searchedTags = null;
         $tagsString = $request->input('tags');
@@ -119,11 +120,11 @@ class AlbumController extends Controller
                 ->withAllTags($searchedTags)
                 ->paginate($perPage);
         }
-
-        $imagesResponse = ImageResource::collection($imagesFromDB);
-
-        if (count($imagesResponse) < 1)
-            throw new ApiException(200, 'Empty album or no images with entered tags');
-        return response($imagesResponse);
+        return response([
+            'page'     => $imagesFromDB->currentPage(),
+            'per_page' => $imagesFromDB->perPage(),
+            'total'    => $imagesFromDB->total(),
+            'pictures' => ImageResource::collection($imagesFromDB->items()),
+        ]);
     }
 }
