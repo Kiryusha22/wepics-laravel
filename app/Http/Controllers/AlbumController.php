@@ -9,10 +9,6 @@ use App\Http\Resources\ImageResource;
 use App\Models\Album;
 use App\Models\Image;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 

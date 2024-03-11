@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Exceptions\ApiException;
 use App\Models\Album;
 use App\Models\Image;
-use Illuminate\Http\Request;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Storage;
