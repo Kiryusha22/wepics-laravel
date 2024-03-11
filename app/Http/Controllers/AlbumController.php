@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 class AlbumController extends Controller
 {
-    public function getAlbumFromDB($hash) {
+    static public function getAlbumFromDB($hash) {
         if ($hash) {
             $album = Album::where('hash', $hash)->first();
             if (!$album)
@@ -36,7 +36,7 @@ class AlbumController extends Controller
         return $album;
     }
     public function get($hash = null) {
-        $parentAlbum = $this->getAlbumFromDB($hash);
+        $parentAlbum = $this::getAlbumFromDB($hash);
 
         $path = "images$parentAlbum->path";
         $folders = Storage::directories($path);
@@ -59,7 +59,7 @@ class AlbumController extends Controller
         ]);
     }
     public function getImages(AlbumImagesRequest $request, $hash = null) {
-        $parentAlbum = $this->getAlbumFromDB($hash);
+        $parentAlbum = $this::getAlbumFromDB($hash);
 
         $path = "images$parentAlbum->path";
         $files = Storage::files($path);
@@ -76,16 +76,15 @@ class AlbumController extends Controller
                 ->where('album_id', $parentAlbum->id)
                 ->first();
             if(!$imageModel) {
-                $manager = new ImageManager(new Driver());
-                $imageFile = $manager->read(Storage::path($image));
+                $sizes = getimagesize(Storage::path($image));
 
                 $imageModel = Image::create([
                     'name'     => basename($image),
                     'hash'     => md5(Storage::get($image)),
                     'date'     => Carbon::createFromTimestamp(Storage::lastModified($image)),
                     'size'     => Storage::size($image),
-                    'width'    => $imageFile->width(),
-                    'height'   => $imageFile->height(),
+                    'width'    => $sizes[0],
+                    'height'   => $sizes[1],
                     'album_id' => $parentAlbum->id,
                 ]);
             }
