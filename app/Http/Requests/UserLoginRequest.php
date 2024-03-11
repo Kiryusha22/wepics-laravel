@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class RegisterRequest extends ApiRequest
+class UserLoginRequest extends ApiRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -14,9 +14,8 @@ class RegisterRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'nickname'=>'required|string|min:1',
-            'login'   =>'required|string|min:2|unique:users',
-            'password'=>'required|string|min:8',
+            'login'    => 'required|string|min:2',
+            'password' => 'required|string|min:8',
         ];
     }
 }

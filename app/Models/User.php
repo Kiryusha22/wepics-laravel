@@ -16,9 +16,11 @@ class User extends Authenticatable
     protected $fillable = [
         'nickname', 'password', 'login'
     ];
-
     protected $hidden = [
         'password',
+    ];
+    protected $casts = [
+        'password' => 'hashed',
     ];
 
     // Связь с моделью AccessRight

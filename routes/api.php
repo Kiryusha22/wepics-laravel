@@ -21,15 +21,19 @@ Route
 ::controller(UserController::class)
 ->prefix('users')
 ->group(function () {
-    Route::middleware('token.auth')
-        ->get  ('logout', 'logout');
-    Route::post('login' , 'login' );
-    Route::post('reg'   , 'reg'   );
+    Route::post ('login' , 'login'   );
+    Route::post ('reg'   , 'reg'     );
+
+    Route::middleware('token.auth')->group(function () {
+        Route::get  ('logout', 'logout'  );
+        Route::patch('',       'editSelf');
+    });
 
     Route::middleware('token.auth:admin')->group(function () {
         Route::post  (''    , 'create' );
         Route::get   (''    , 'showAll');
-        Route::get   ('{id}', 'show'   )->where('id', '[0-9]+');;
+        Route::get   ('{id}', 'show'   )->where('id', '[0-9]+');
+        Route::patch ('{id}', 'edit'   )->where('id', '[0-9]+');
         Route::delete('{id}', 'destroy')->where('id', '[0-9]+');
     });
 });
@@ -39,6 +43,17 @@ Route::middleware('token.auth:guest')->group(function () {
     ::controller(AlbumController::class)
     ->prefix('albums')
     ->group(function () {
+
+        Route
+        ::controller(AccessController::class)
+        ->prefix('access')
+        ->middleware('token.auth:admin')
+        ->group(function () {
+            Route::get   ('', 'showAll');
+            Route::post  ('', 'create' );
+            Route::delete('', 'destroy');
+        });
+
         Route::get   ('images',        'getImages');
         Route::get   ('{hash}/images', 'getImages');
         Route::get   ('{hash?}',       'get'   )->defaults('hash', null);
@@ -49,10 +64,11 @@ Route::middleware('token.auth:guest')->group(function () {
 
         Route
         ::controller(AccessController::class)
-        ->prefix('access')
+        ->prefix('{hash}/access')
+        ->middleware('token.auth:admin')
         ->group(function () {
             Route::get   ('', 'showAll');
-            Route::post  ('', 'create');
+            Route::post  ('', 'create' );
             Route::delete('', 'destroy');
         });
     });

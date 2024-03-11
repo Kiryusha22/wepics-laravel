@@ -28,9 +28,9 @@ class TokenAuth
             if (!$tokenDB)
                 throw new ApiException(401, 'Invalid token');
 
-            $request->sender = $tokenDB->user;
+            request()->sender = $tokenDB->user;
             if ($allowedLevel == 'admin' &&
-                !$request->sender->is_admin)
+                !request()->sender->is_admin)
                 throw new ApiException(403, 'Forbidden for you');
         }
 
