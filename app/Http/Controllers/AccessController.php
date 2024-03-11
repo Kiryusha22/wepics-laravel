@@ -33,12 +33,13 @@ class AccessController extends Controller
 
         $right = AccessRight
             ::where('album_id', $album->id)
-            ->where('user_id', $request->user_id);
+            ->where('user_id', $request->user_id)
+            ->first();
 
         if (!$right)
             throw new ApiException(404, 'Access right not found');
 
-        $right->destoy();
+        $right->delete();
 
         return response(null, '204');
     }
