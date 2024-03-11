@@ -71,13 +71,13 @@ class ImageController extends Controller
         $image = $this::getImageFromDB($hash);
         $album = Album::find($image->album_id);
 
-        //$imagePath = "images$album->path$image->name";
-        //Storage::delete($imagePath);
+        $imagePath = "images$album->path$image->name";
+        Storage::delete($imagePath);
 
         $thumbPath = "thumbs/$image->hash-*";
-        Storage::delete(File::glob(Storage::path($thumbPath)));  // FIXME: чёт не удаляется
+        File::delete(File::glob(Storage::path($thumbPath)));
 
-        //$image->delete();
+        $image->delete();
 
         return response(null, 204);
     }
