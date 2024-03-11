@@ -51,21 +51,23 @@ Route
     ->controller(AlbumController::class)
     ->prefix('albums/{album_hash}')
     ->group(function ($route) {
-    $route->get   ('', 'get'   );
-    $route->post  ('', 'create');
-    $route->patch ('', 'rename');
-    $route->delete('', 'destroy');
+    $route->get('', 'get');
+    $route->middleware('token.auth:admin')->group(function ($route) {
+        $route->post  ('', 'create');
+        $route->patch ('', 'rename');
+        $route->delete('', 'destroy');
+    });
     $route
         ->controller(ImageController::class)
         ->prefix('images')
         ->group(function ($route) {
-        $route->get ('', 'showAll');
-        $route->post('', 'upload');
+        $route->get('', 'showAll');
+        $route->middleware('token.auth:admin')->post('', 'upload');
         $route
             ->prefix('{image_hash}')
             ->group(function ($route) {
-            $route->delete('',     'destroy');
-            $route->patch ('',     'rename');
+            $route->middleware('token.auth:admin')->delete('', 'destroy');
+            $route->middleware('token.auth:admin')->patch ('', 'rename');
             $route->get   ('',     'show');
             $route->get   ('orig', 'orig');
             $route->get   ('thumb/{orient}{px}', 'thumb')
