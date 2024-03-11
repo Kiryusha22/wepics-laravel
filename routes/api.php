@@ -5,6 +5,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\AccessController;
+use App\Http\Controllers\TagContoller;
+use App\Http\Controllers\ReactionContoller;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,69 +22,80 @@ use App\Http\Controllers\AccessController;
 Route
 ::controller(UserController::class)
 ->prefix('users')
-->group(function () {
-    Route::post ('login' , 'login'   );
-    Route::post ('reg'   , 'reg'     );
-
-    Route::middleware('token.auth')->group(function () {
-        Route::get  ('logout', 'logout'  );
-        Route::patch('',       'editSelf');
+->group(function ($route) {
+    $route->post ('login' , 'login'   );
+    $route->post ('reg'   , 'reg'     );
+    $route
+        ->middleware('token.auth')
+        ->group(function ($route) {
+        $route->get  ('logout', 'logout'  );
+        $route->patch('',       'editSelf');
     });
-
-    Route::middleware('token.auth:admin')->group(function () {
-        Route::post  (''    , 'create' );
-        Route::get   (''    , 'showAll');
-        Route::get   ('{id}', 'show'   )->where('id', '[0-9]+');
-        Route::patch ('{id}', 'edit'   )->where('id', '[0-9]+');
-        Route::delete('{id}', 'destroy')->where('id', '[0-9]+');
+    $route
+        ->middleware('token.auth:admin')
+        ->group(function ($route) {
+        $route->post  (''    , 'create' );
+        $route->get   (''    , 'showAll');
+        $route
+            ->prefix('{id}')
+            ->group(function ($route) {
+            $route->get   ('', 'show'   )->where('id', '[0-9]+');
+            $route->patch ('', 'edit'   )->where('id', '[0-9]+');
+            $route->delete('', 'destroy')->where('id', '[0-9]+');
+        });
     });
 });
 
-Route::middleware('token.auth:guest')->group(function () {
-    Route
-    ::controller(AlbumController::class)
-    ->prefix('albums')
-    ->group(function () {
-
-        Route
-        ::controller(AccessController::class)
+Route
+    ::middleware('token.auth:guest')
+    ->controller(AlbumController::class)
+    ->prefix('albums/{album_hash}')
+    ->group(function ($route) {
+    $route->get   ('', 'get'   );
+    $route->post  ('', 'create');
+    $route->patch ('', 'rename');
+    $route->delete('', 'destroy');
+    $route
+        ->controller(ImageController::class)
+        ->prefix('images')
+        ->group(function ($route) {
+        $route->get ('', 'showAll');
+        $route->post('', 'upload');
+        $route
+            ->prefix('{image_hash}')
+            ->group(function ($route) {
+            $route->delete('',     'destroy');
+            $route->patch ('',     'rename');
+            $route->get   ('',     'show');
+            $route->get   ('orig', 'orig');
+            $route->get   ('thumb/{orient}{px}', 'thumb')
+                ->where('orient', '[whWH]')
+                ->where('px'    , '[0-9]+');
+            $route
+                ->controller(TagContoller::class)
+                ->middleware('token.auth:admin')
+                ->prefix('tags')
+                ->group(function ($route) {
+                $route->post  ('', 'set');
+                $route->delete('', 'unset');
+            });
+            $route
+                ->controller(ReactionContoller::class)
+                ->middleware('token.auth:user')
+                ->prefix('reactions')
+                ->group(function ($route) {
+                $route->post  ('', 'set');
+                $route->delete('', 'unset');
+            });
+        });
+    });
+    $route
+        ->controller(AccessController::class)
+        ->middleware('token.auth:admin')
         ->prefix('access')
-        ->middleware('token.auth:admin')
-        ->group(function () {
-            Route::get   ('', 'showAll');
-            Route::post  ('', 'create' );
-            Route::delete('', 'destroy');
-        });
-
-        Route::get   ('images',        'getImages');
-        Route::get   ('{hash}/images', 'getImages');
-        Route::get   ('{hash?}',       'get'   )->defaults('hash', null);
-        Route::post  ('{hash?}',       'create')->defaults('hash', null);
-        Route::post  ('images',        'uploadImages');
-        Route::post  ('{hash}/images', 'uploadImages');
-        Route::delete('{hash}',        'destroy');
-
-        Route
-        ::controller(AccessController::class)
-        ->prefix('{hash}/access')
-        ->middleware('token.auth:admin')
-        ->group(function () {
-            Route::get   ('', 'showAll');
-            Route::post  ('', 'create' );
-            Route::delete('', 'destroy');
-        });
-    });
-
-    Route
-    ::controller(ImageController::class)
-    ->prefix('images')
-    ->group(function () {
-        Route::get('{hash}',      'show' );
-        Route::get('{hash}/orig', 'orig' );
-        Route::get('{hash}/thumb/{orient}/{px}', 'thumb')
-            ->where('orient', '[whWH]')
-            ->where('px'    , '[0-9]+');
-        Route::delete('{hash}', 'destroy');
+        ->group(function ($route) {
+        $route->get   ('', 'showAll');
+        $route->post  ('', 'create' );
+        $route->delete('', 'destroy');
     });
 });
-
