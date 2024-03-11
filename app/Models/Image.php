@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Tags\HasTags;
@@ -25,6 +26,17 @@ class Image extends Model
         'height',
         'album_id',
     ];
+
+    static public function getByHash($albumHash, $imageHash) {
+        $album = Album::getByHash($albumHash);
+        $image = Image
+            ::where('album_id', $album->id)
+            ->where('hash', $imageHash)
+            ->first();
+        if(!$image)
+            throw new ApiException(404, "Image not found");
+        return $image;
+    }
 
     public function album() {
         return $this->belongsTo(Album::class);
