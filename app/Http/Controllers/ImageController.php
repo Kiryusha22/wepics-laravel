@@ -6,6 +6,7 @@ use App\Enums\ImageExtensionsEnum;
 use App\Enums\SortTypesEnum;
 use App\Exceptions\ApiException;
 use App\Http\Requests\AlbumImagesRequest;
+use App\Http\Requests\FilenameCheckRequest;
 use App\Http\Resources\ImageResource;
 use App\Models\Album;
 use App\Models\Image;
@@ -141,12 +142,31 @@ class ImageController extends Controller
         return response()->download(Storage::path($thumbPath), basename($thumbPath));
     }
 
+    public function rename(FilenameCheckRequest $request, $albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
+        $imageExt = pathinfo($image->name, PATHINFO_EXTENSION);
+        $newName = $request->name;
+
+        $oldLocalPath = 'images'. $image->album->path . $image->name;
+        $newPath = $image->album->path ."$newName.$imageExt";
+        $newLocalPath = "images$newPath";
+        if (Storage::exists($newPath))
+            throw new ApiException(409, 'Album with this name already exist');
+
+        Storage::move($oldLocalPath, $newLocalPath);
+        $image->update([
+            'name' => basename($newPath),
+            'path' => "$newPath",
+        ]);
+        return response(null, 204);
+    }
+
     public function delete($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        $album = Album::find($image->album_id);
 
-        $imagePath = "images$album->path$image->name";
+        $imagePath = 'images'. $image->album->path . $image->name;
         Storage::delete($imagePath);
 
         $thumbPath = "thumbs/$image->hash-*";
