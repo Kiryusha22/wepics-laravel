@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ImageExtensionsEnum;
 use App\Enums\SortTypesEnum;
 use App\Exceptions\ApiException;
 use App\Http\Requests\AlbumImagesRequest;
@@ -16,38 +17,44 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageController extends Controller
 {
-    public function showAll(AlbumImagesRequest $request, $albumHash) {
-        $parentAlbum = Album::getByHash($albumHash);
-
-        $path = "images$parentAlbum->path";
+    public function indexingImages($album)
+    {
+        $path = "images$album->path";
         $files = Storage::files($path);
-
-        $images = array_filter($files, function ($file) {
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webm'];
+        $allowedExtensions = array_column(ImageExtensionsEnum::cases(), 'value');
+        foreach ($files as $file) {
             $extension = pathinfo($file, PATHINFO_EXTENSION);
-            return in_array($extension, $allowedExtensions);
-        });
-        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
-        foreach ($images as $image) {
+            if (!in_array($extension, $allowedExtensions))
+                continue;
+
             $imageModel = Image
-                ::where('name', basename($image))
-                ->where('album_id', $parentAlbum->id)
+                ::where('name', basename($file))
+                ->where('album_id', $album->id)
                 ->first();
-            if(!$imageModel) {
-                $sizes = getimagesize(Storage::path($image));
+            if (!$imageModel) {
+                $sizes = getimagesize(Storage::path($file));
 
                 $imageModel = Image::create([
-                    'name'     => basename($image),
-                    'hash'     => md5(Storage::get($image)),
-                    'date'     => Carbon::createFromTimestamp(Storage::lastModified($image)),
-                    'size'     => Storage::size($image),
-                    'width'    => $sizes[0],
-                    'height'   => $sizes[1],
-                    'album_id' => $parentAlbum->id,
+                    'name' => basename($file),
+                    'hash' => md5(Storage::get($file)),
+                    'date' => Carbon::createFromTimestamp(Storage::lastModified($file)),
+                    'size' => Storage::size($file),
+                    'width'  => $sizes[0],
+                    'height' => $sizes[1],
+                    'album_id' => $album->id,
                 ]);
             }
             // FIXME: надо удалять не найденные картинки из БД
         }
+    }
+
+    public function showAll(AlbumImagesRequest $request, $albumHash)
+    {
+        $album = Album::getByHash($albumHash);
+
+        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
+        $this->indexingImages($album);
+
         $searchedTags = null;
         $tagsString = $request->input('tags');
         if ($tagsString)
@@ -66,13 +73,12 @@ class ImageController extends Controller
 
         if (!$searchedTags) {
             $imagesFromDB = Image
-                ::where('album_id', $parentAlbum->id)
+                ::where('album_id', $album->id)
                 ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
                 ->paginate($perPage);
-        }
-        else {
+        } else {
             $imagesFromDB = Image
-                ::where('album_id', $parentAlbum->id)
+                ::where('album_id', $album->id)
                 ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
                 ->withAllTags($searchedTags)
                 ->paginate($perPage);
@@ -85,22 +91,22 @@ class ImageController extends Controller
         ]);
     }
 
-    public function show($albumHash, $imageHash) {
-        $image = $this::getImageByHash($albumHash, $imageHash);
+    public function show($albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
         return response(ImageResource::make($image));
     }
 
-    public function orig($albumHash, $imageHash) {
-        $image = $this::getImageByHash($albumHash, $imageHash);
-
-        $album = Album::find($image->album_id);
-        $path = Storage::disk("local")->path("images$image->album->path$image->name");
-
-        return response()->download($path, basename($path));
+    public function orig($albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
+        $path = Storage::path('images'. $image->album->path . $image->name);
+        return response()->download($path, $image->name);
     }
 
-    public function thumb($albumHash, $imageHash, $orientation, $size) {
-        $image = $this::getImageByHash($albumHash, $imageHash);
+    public function thumb($albumHash, $imageHash, $orientation, $size)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
 
         $allowedSizes = [200, 300, 400, 600, 900];
         $allow = false;
@@ -127,18 +133,17 @@ class ImageController extends Controller
             else
                 $thumb->scale(height: $size);
 
-            if(!Storage::exists('thumbs'))
+            if (!Storage::exists('thumbs'))
                 Storage::makeDirectory('thumbs');
 
             $thumb->toWebp(80)->save(Storage::path($thumbPath));
         }
-
-        $path = Storage::disk("local")->path($thumbPath);
-        return response()->download($path, basename($path));
+        return response()->download(Storage::path($thumbPath), basename($thumbPath));
     }
 
-    public function destroy($albumHash, $imageHash) {
-        $image = $this::getImageByHash($albumHash, $imageHash);
+    public function delete($albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
         $album = Album::find($image->album_id);
 
         $imagePath = "images$album->path$image->name";

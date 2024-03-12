@@ -51,14 +51,14 @@ Route
         $albumManage->delete('', 'delete');
     });
     $album
-        ->controller(AccessController::class)
-        ->middleware('token.auth:admin')
-        ->prefix('access')
-        ->group(function ($albumRight) {
-            $albumRight->get   ('', 'showAll');
-            $albumRight->post  ('', 'create' );
-            $albumRight->delete('', 'delete');
-        });
+    ->controller(AccessController::class)
+    ->middleware('token.auth:admin')
+    ->prefix('access')
+    ->group(function ($albumRights) {
+        $albumRights->get   ('', 'showAll');
+        $albumRights->post  ('', 'create' );
+        $albumRights->delete('', 'delete');
+    });
     $album
     ->controller(ImageController::class)
     ->prefix('images')
@@ -68,9 +68,9 @@ Route
         $albumImages->prefix('{image_hash}')->group(function ($image) {
             $image->middleware('token.auth:admin')->delete('', 'delete');
             $image->middleware('token.auth:admin')->patch ('', 'rename');
-            $image->get   ('',     'show');
-            $image->get   ('orig', 'orig');
-            $image->get   ('thumb/{orient}{px}', 'thumb')
+            $image->get('',     'show');
+            $image->get('orig', 'orig');
+            $image->get('thumb/{orient}{px}', 'thumb')
                 ->where('orient', '[whWH]')
                 ->where('px'    , '[0-9]+');
             $image

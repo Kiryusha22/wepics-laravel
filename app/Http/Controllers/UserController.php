@@ -63,7 +63,7 @@ class UserController extends Controller
         return response(null, 204);
     }
     public function editSelf(UserEditSelfRequest $request) {
-        $user = User::find(request()->sender->id);
+        $user = User::find($request->user()->id);
         if ($request->nickname) $user->update(['nickname' => $request->nickname]);
         if ($request->password) $user->update(['password' => $request->password]);
         return response(null, 204);

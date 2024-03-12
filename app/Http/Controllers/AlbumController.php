@@ -2,20 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\SortTypesEnum;
 use App\Exceptions\ApiException;
-use App\Http\Requests\AlbumImagesRequest;
-use App\Http\Resources\ImageResource;
+use App\Http\Requests\FilenameCheckRequest;
 use App\Models\Album;
-use App\Models\Image;
-use Carbon\Carbon;
-use Illuminate\Session\Store;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AlbumController extends Controller
 {
-    public function get($hash) {
+    public function get($hash)
+    {
         $parentAlbum = Album::getByHash($hash);
 
         $localPath = "images$parentAlbum->path";
@@ -23,11 +20,11 @@ class AlbumController extends Controller
 
         $albumResponse = [];
         foreach ($folders as $folder) {
-            $path = $parentAlbum->path.basename($folder)."/";
+            $path = $parentAlbum->path . basename($folder) .'/';
             $albumModel = Album::where('path', $path)->first();
-            if(!$albumModel)
+            if (!$albumModel)
                 $albumModel = Album::create([
-                    'name' => basename($folder),
+                    'name' => basename($path),
                     'path' => $path,
                     'hash' => Str::random(25),
                     'parent_album_id' => $parentAlbum->id
@@ -39,16 +36,14 @@ class AlbumController extends Controller
         ]);
     }
 
-    public function create($hash) {
-        $parentAlbum = $this::getAlbumFromDB($hash);
-
-        $newFolderName = request()->album_name;
-        if (strpbrk($newFolderName, "\\/?%*:|\"<>"))
-            throw new ApiException(422, 'Not valid album name');
+    public function create(FilenameCheckRequest $request, $hash)
+    {
+        $parentAlbum = Album::getByHash($hash);
+        $newFolderName = $request->name;
 
         $path = "images$parentAlbum->path$newFolderName";
         if (Storage::exists($path))
-            throw new ApiException(409, 'Album already exist');
+            throw new ApiException(409, 'Album with this name already exist');
 
         Storage::createDirectory($path);
         $newAlbum = Album::create([
@@ -59,15 +54,37 @@ class AlbumController extends Controller
         ]);
         return response($newAlbum);
     }
-    public function destroy($hash) {
-        $album = $this::getAlbumFromDB($hash);
 
-        if ($album->path == '/')
-            throw new ApiException(400, 'Root album cannot be deleted');
+    public function rename(FilenameCheckRequest $request, $hash)
+    {
+        $album = Album::getByHash($hash);
+        $newFolderName = $request->name;
 
-        Storage::deleteDirectory("images$album->path");
+        $oldLocalPath = "images$album->path";
+        $newPath = dirname($album->path) .'/'. $newFolderName .'/';
+        $newLocalPath = "images$newPath";
+        if (Storage::exists($newPath))
+            throw new ApiException(409, 'Album with this name already exist');
+
+        Storage::move($oldLocalPath, $newLocalPath);
+        $album->update([
+            'name' => basename($newPath),
+            'path' => "$newPath",
+        ]);
+        return response(null, 204);
+    }
+
+    public function delete($hash)
+    {
+        $album = Album::getByHash($hash);
+        $path = "images$album->path";
+
+        if (!$album->path == '/')
+            Storage::deleteDirectory($path);
+        else
+            File::cleanDirectory(Storage::path($path));
+
         $album->delete();
-
         return response(null, 204);
     }
 }
