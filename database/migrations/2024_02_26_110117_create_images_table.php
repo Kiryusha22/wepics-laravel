@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('images', function (Blueprint $table) {
             $table->id();
             $table->string   ('name', 127);
-            $table->string   ('hash', 32)->unique();
+            $table->string   ('hash', 32);
             $table->dateTime ('date');
             $table->integer  ('size');
             $table->integer  ('width');

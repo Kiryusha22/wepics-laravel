@@ -5,6 +5,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\AccessController;
+use App\Http\Controllers\TagContoller;
+use App\Http\Controllers\ReactionContoller;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,69 +22,99 @@ use App\Http\Controllers\AccessController;
 Route
 ::controller(UserController::class)
 ->prefix('users')
-->group(function () {
-    Route::post ('login' , 'login'   );
-    Route::post ('reg'   , 'reg'     );
-
-    Route::middleware('token.auth')->group(function () {
-        Route::get  ('logout', 'logout'  );
-        Route::patch('',       'editSelf');
+->group(function ($users) {
+    $users->post ('login' , 'login');
+    $users->post ('reg'   , 'reg'  );
+    $users->middleware('token.auth')->group(function ($authorized) {
+        $authorized->get  ('logout', 'logout'  );
+        $authorized->patch('',       'editSelf');
     });
-
-    Route::middleware('token.auth:admin')->group(function () {
-        Route::post  (''    , 'create' );
-        Route::get   (''    , 'showAll');
-        Route::get   ('{id}', 'show'   )->where('id', '[0-9]+');
-        Route::patch ('{id}', 'edit'   )->where('id', '[0-9]+');
-        Route::delete('{id}', 'destroy')->where('id', '[0-9]+');
+    $users->middleware('token.auth:admin')->group(function ($usersManage) {
+        $usersManage->post('', 'create' );
+        $usersManage->get ('', 'showAll');
+        $usersManage->prefix('{id}')->group(function ($userManage) {
+            $userManage->get   ('', 'show'  )->where('id', '[0-9]+');
+            $userManage->patch ('', 'edit'  )->where('id', '[0-9]+');
+            $userManage->delete('', 'delete')->where('id', '[0-9]+');
+        });
     });
 });
-
-Route::middleware('token.auth:guest')->group(function () {
-    Route
-    ::controller(AlbumController::class)
-    ->prefix('albums')
-    ->group(function () {
-
-        Route
-        ::controller(AccessController::class)
-        ->prefix('access')
-        ->middleware('token.auth:admin')
-        ->group(function () {
-            Route::get   ('', 'showAll');
-            Route::post  ('', 'create' );
-            Route::delete('', 'destroy');
-        });
-
-        Route::get   ('images',        'getImages');
-        Route::get   ('{hash}/images', 'getImages');
-        Route::get   ('{hash?}',       'get'   )->defaults('hash', null);
-        Route::post  ('{hash?}',       'create')->defaults('hash', null);
-        Route::post  ('images',        'uploadImages');
-        Route::post  ('{hash}/images', 'uploadImages');
-        Route::delete('{hash}',        'destroy');
-
-        Route
-        ::controller(AccessController::class)
-        ->prefix('{hash}/access')
-        ->middleware('token.auth:admin')
-        ->group(function () {
-            Route::get   ('', 'showAll');
-            Route::post  ('', 'create' );
-            Route::delete('', 'destroy');
-        });
+Route
+::middleware('token.auth:guest')
+->controller(AlbumController::class)
+->prefix('albums/{album_hash}')
+->group(function ($album) {
+    $album->get('', 'get');
+    $album->middleware('token.auth:admin')->group(function ($albumManage) {
+        $albumManage->post  ('', 'create');
+        $albumManage->patch ('', 'rename');
+        $albumManage->delete('', 'delete');
     });
-
-    Route
-    ::controller(ImageController::class)
+    $album
+    ->controller(AccessController::class)
+    ->middleware('token.auth:admin')
+    ->prefix('access')
+    ->group(function ($albumRights) {
+        $albumRights->get   ('', 'showAll');
+        $albumRights->post  ('', 'create' );
+        $albumRights->delete('', 'delete');
+    });
+    $album
+    ->controller(ImageController::class)
     ->prefix('images')
-    ->group(function () {
-        Route::get('{hash}',      'show' );
-        Route::get('{hash}/orig', 'orig' );
-        Route::get('{hash}/thumb/{orient}/{px}', 'thumb')
-            ->where('orient', '[whWH]')
-            ->where('px'    , '[0-9]+');
-        Route::delete('{hash}', 'destroy');
+    ->group(function ($albumImages) {
+        $albumImages->get('', 'showAll');
+        $albumImages->middleware('token.auth:admin')->post('', 'upload');
+        $albumImages->prefix('{image_hash}')->group(function ($image) {
+            $image->middleware('token.auth:admin')->delete('', 'delete');
+            $image->middleware('token.auth:admin')->patch ('', 'rename');
+            $image->get('',     'show');
+            $image->get('orig', 'orig');
+            $image->get('thumb/{orient}{px}', 'thumb')
+                ->where('orient', '[whWH]')
+                ->where('px'    , '[0-9]+');
+            $image
+            ->controller(TagContoller::class)
+            ->middleware('token.auth:admin')
+            ->prefix('tags')
+            ->group(function ($imageTags) {
+                $imageTags->post  ('', 'set');
+                $imageTags->delete('', 'unset');
+            });
+            $image
+            ->controller(ReactionContoller::class)
+            ->middleware('token.auth:user')
+            ->prefix('reactions')
+            ->group(function ($imageReactions) {
+                $imageReactions->post  ('', 'set');
+                $imageReactions->delete('', 'unset');
+            });
+        });
     });
 });
-
+Route
+::middleware('token.auth:guest')
+->controller(TagContoller::class)
+->prefix('tags')
+->group(function ($tags) {
+    $tags->get('', 'show');
+    $tags->get('{input}', 'search');
+    $tags->middleware('token.auth:admin')->group(function ($tagsManage) {
+        $tagsManage->post  ('', 'create');
+        $tagsManage->patch ('', 'rename');
+        $tagsManage->delete('', 'delete');
+    });
+});
+Route
+::middleware('token.auth:guest')
+->controller(ReactionContoller::class)
+->prefix('reactions')
+->group(function ($reactions) {
+    $reactions->get('', 'show');
+    $reactions->get('{input}', 'search');
+    $reactions->middleware('token.auth:admin')->group(function ($reactionsManage) {
+        $reactionsManage->post  ('', 'create');
+        $reactionsManage->patch ('', 'rename');
+        $reactionsManage->delete('', 'delete');
+    });
+});

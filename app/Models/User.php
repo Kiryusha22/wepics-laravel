@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -23,20 +24,13 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Связь с моделью AccessRight
-    public function accessRights() {
-        return $this->hasMany(AccessRight::class);
+    static public function getByToken($token) {
+        $tokenDB = Token::where('value', $token)->first();
+        if (!$tokenDB)
+            throw new ApiException(401, 'Invalid token');
+        return $tokenDB->user;
     }
 
-    // Связь с моделью Reaction
-    public function reactions() {
-        return $this->hasMany(Reaction::class);
-    }
-
-    // Связь с моделью Tag
-    public function tags() {
-        return $this->hasMany(Tag::class);
-    }
     public function generateToken(){
         $token = Token::create([
             'user_id' => $this->id,
@@ -44,5 +38,15 @@ class User extends Authenticatable
 
         ]);
         return $token->value;
+    }
+
+    public function accessRights() {
+        return $this->hasMany(AccessRight::class);
+    }
+    public function reactions() {
+        return $this->hasMany(Reaction::class);
+    }
+    public function tags() {
+        return $this->hasMany(Tag::class);
     }
 }

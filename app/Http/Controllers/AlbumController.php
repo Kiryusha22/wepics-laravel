@@ -2,48 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\SortTypesEnum;
 use App\Exceptions\ApiException;
-use App\Http\Requests\AlbumImagesRequest;
-use App\Http\Resources\ImageResource;
+use App\Http\Requests\FilenameCheckRequest;
 use App\Models\Album;
-use App\Models\Image;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AlbumController extends Controller
 {
-    static public function getAlbumFromDB($hash) {
-        if ($hash) {
-            $album = Album::where('hash', $hash)->first();
-            if (!$album)
-                throw new ApiException(404, "Album with hash \"$hash\" not found");
-        }
-        else {
-            $album = Album::where('path', '/')->first();
-            if (!$album)
-                $album =  Album::create([
-                    'name' => '',
-                    'path' => '/',
-                    'hash' => Str::random(25),
-                ]);
-        }
-        return $album;
-    }
-    public function get($hash = null) {
-        $parentAlbum = $this::getAlbumFromDB($hash);
+    public function get($hash)
+    {
+        $parentAlbum = Album::getByHash($hash);
 
-        $path = "images$parentAlbum->path";
-        $folders = Storage::directories($path);
+        $localPath = "images$parentAlbum->path";
+        $folders = Storage::directories($localPath);
 
         $albumResponse = [];
         foreach ($folders as $folder) {
-            $path = $parentAlbum->path.basename($folder)."/";
+            $path = $parentAlbum->path . basename($folder) .'/';
             $albumModel = Album::where('path', $path)->first();
-            if(!$albumModel)
+            if (!$albumModel)
                 $albumModel = Album::create([
-                    'name' => basename($folder),
+                    'name' => basename($path),
                     'path' => $path,
                     'hash' => Str::random(25),
                     'parent_album_id' => $parentAlbum->id
@@ -54,72 +35,56 @@ class AlbumController extends Controller
             'albums' => $albumResponse,
         ]);
     }
-    public function getImages(AlbumImagesRequest $request, $hash = null) {
-        $parentAlbum = $this::getAlbumFromDB($hash);
 
-        $path = "images$parentAlbum->path";
-        $files = Storage::files($path);
+    public function create(FilenameCheckRequest $request, $hash)
+    {
+        $parentAlbum = Album::getByHash($hash);
+        $newFolderName = $request->name;
 
-        $images = array_filter($files, function ($file) {
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webm'];
-            $extension = pathinfo($file, PATHINFO_EXTENSION);
-            return in_array($extension, $allowedExtensions);
-        });
-        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
-        foreach ($images as $image) {
-            $imageModel = Image
-                ::where('name', basename($image))
-                ->where('album_id', $parentAlbum->id)
-                ->first();
-            if(!$imageModel) {
-                $sizes = getimagesize(Storage::path($image));
+        $path = "images$parentAlbum->path$newFolderName";
+        if (Storage::exists($path))
+            throw new ApiException(409, 'Album with this name already exist');
 
-                $imageModel = Image::create([
-                    'name'     => basename($image),
-                    'hash'     => md5(Storage::get($image)),
-                    'date'     => Carbon::createFromTimestamp(Storage::lastModified($image)),
-                    'size'     => Storage::size($image),
-                    'width'    => $sizes[0],
-                    'height'   => $sizes[1],
-                    'album_id' => $parentAlbum->id,
-                ]);
-            }
-            // FIXME: надо удалять не найденные картинки из БД
-        }
-        $searchedTags = null;
-        $tagsString = $request->input('tags');
-        if ($tagsString)
-            $searchedTags = explode(',', $tagsString);
-
-        $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
-        $sortType = ($request->input('sort'));
-        if (!$sortType)
-            $sortType = $allowedSorts[0];
-
-        $isReverse = $request->has('reverse');
-
-        $perPage = intval($request->input('per_page'));
-        if (!$perPage)
-            $perPage = 30;
-
-        if (!$searchedTags) {
-            $imagesFromDB = Image
-                ::where('album_id', $parentAlbum->id)
-                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
-                ->paginate($perPage);
-        }
-        else {
-            $imagesFromDB = Image
-                ::where('album_id', $parentAlbum->id)
-                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
-                ->withAllTags($searchedTags)
-                ->paginate($perPage);
-        }
-        return response([
-            'page'     => $imagesFromDB->currentPage(),
-            'per_page' => $imagesFromDB->perPage(),
-            'total'    => $imagesFromDB->total(),
-            'pictures' => ImageResource::collection($imagesFromDB->items()),
+        Storage::createDirectory($path);
+        $newAlbum = Album::create([
+            'name' => basename($path),
+            'path' => "$parentAlbum->path$newFolderName/",
+            'hash' => Str::random(25),
+            'parent_album_id' => $parentAlbum->id
         ]);
+        return response($newAlbum);
+    }
+
+    public function rename(FilenameCheckRequest $request, $hash)
+    {
+        $album = Album::getByHash($hash);
+        $newFolderName = $request->name;
+
+        $oldLocalPath = "images$album->path";
+        $newPath = dirname($album->path) .'/'. $newFolderName .'/';
+        $newLocalPath = "images$newPath";
+        if (Storage::exists($newPath))
+            throw new ApiException(409, 'Album with this name already exist');
+
+        Storage::move($oldLocalPath, $newLocalPath);
+        $album->update([
+            'name' => basename($newPath),
+            'path' => "$newPath",
+        ]);
+        return response(null, 204);
+    }
+
+    public function delete($hash)
+    {
+        $album = Album::getByHash($hash);
+        $path = "images$album->path";
+
+        if (!$album->path == '/')
+            Storage::deleteDirectory($path);
+        else
+            File::cleanDirectory(Storage::path($path));
+
+        $album->delete();
+        return response(null, 204);
     }
 }

@@ -3,10 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Exceptions\ApiException;
-use App\Models\Token;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class TokenAuth
 {
@@ -20,18 +19,18 @@ class TokenAuth
         $tokenValue = $request->bearerToken();
 
         if (!$tokenValue) {
-            if (!$allowedLevel == 'guest')
+            if (!($allowedLevel == 'guest'))
                 throw new ApiException(401, 'Token not provided');
         }
         else {
-            $tokenDB = Token::where('value', $tokenValue)->first();
-            if (!$tokenDB)
-                throw new ApiException(401, 'Invalid token');
-
-            request()->sender = $tokenDB->user;
+            $user = User::getByToken($tokenValue);
             if ($allowedLevel == 'admin' &&
-                !request()->sender->is_admin)
+                !$user->is_admin)
                 throw new ApiException(403, 'Forbidden for you');
+
+            $request->setUserResolver(function () use ($user) {
+                return $user;
+            });
         }
 
         return $next($request);

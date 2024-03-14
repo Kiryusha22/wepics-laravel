@@ -2,36 +2,187 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ImageExtensionsEnum;
+use App\Enums\SortTypesEnum;
 use App\Exceptions\ApiException;
+use App\Http\Requests\AlbumImagesRequest;
+use App\Http\Requests\FilenameCheckRequest;
+use App\Http\Requests\UploadRequest;
+use App\Http\Resources\ImageResource;
 use App\Models\Album;
 use App\Models\Image;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Storage;
 
 class ImageController extends Controller
 {
-    static public function getImageFromDB($hash) {
-        $image = Image::where('hash', $hash)->first();
-        if(!$image)
-            throw new ApiException(404, "Image with hash \"$hash\" not found");
-        return $image;
-    }
-    public function show($hash) {
-        $image = $this::getImageFromDB($hash);
-        return response($image);
-    }
-    public function orig($hash) {
-        $image = $this::getImageFromDB($hash);
+    public function indexingImages($album): void
+    {
+        $path = "images$album->path";
+        $files = Storage::files($path);
+        $allowedExtensions = array_column(ImageExtensionsEnum::cases(), 'value');
+        foreach ($files as $file) {
+            $extension = pathinfo($file, PATHINFO_EXTENSION);
+            if (!in_array($extension, $allowedExtensions))
+                continue;
 
-        $album = Album::find($image->album_id);
-        $path = Storage::disk("local")->path("images$album->path$image->name");
+            $imageModel = Image
+                ::where('name', basename($file))
+                ->where('album_id', $album->id)
+                ->first();
+            if (!$imageModel) {
+                $sizes = getimagesize(Storage::path($file));
 
-        return response()->download($path, basename($path));
+                Image::create([
+                    'name' => basename($file),
+                    'hash' => md5(Storage::get($file)),
+                    'date' => Carbon::createFromTimestamp(Storage::lastModified($file)),
+                    'size' => Storage::size($file),
+                    'width'  => $sizes[0],
+                    'height' => $sizes[1],
+                    'album_id' => $album->id,
+                ]);
+            }
+            // FIXME: надо удалять не найденные картинки из БД
+        }
     }
-    public function thumb($hash, $orientation, $size) {
-        $image = $this::getImageFromDB($hash);
+
+    public function upload(UploadRequest $request, $albumHash)
+    {
+        $album = Album::getByHash($albumHash);
+        $files = $request->file('images');
+        $path = "images$album->path";
+        $allowedExts = array_column(ImageExtensionsEnum::cases(), 'value');
+        $allowedExitsImploded = implode(',', $allowedExts);
+
+        $responses = [];
+        foreach ($files as $file) {
+            $fileName = $file->getClientOriginalName();
+            $fileExt  = $file->extension();
+
+            // Валидация файла
+            $validator = Validator::make(['file' => $file], [
+                'file' => ['mimes:'. $allowedExitsImploded],
+            ]);
+            if ($validator->fails()) {
+                // Сохранение плохого ответа API
+                $responses['errored'][] = [
+                    'name'    => $fileName,
+                    'message' => $validator->errors(),
+                ];
+                continue;
+            }
+
+            // Проверка существования того же файла
+            $imageHash = md5(File::get($file->getRealPath()));
+            $imageFounded = false;
+            try {
+                Image::getByHash($albumHash, $imageHash);
+            } finally {
+                $imageFounded = true;
+            }
+            if ($imageFounded) {
+                // Сохранение плохого ответа API
+                $responses['errored'][] = [
+                    'name'    => $fileName,
+                    'message' => "Image with md5 hash \"$imageHash\" already exist in this album",
+                ];
+                continue;
+            }
+
+            // Наименование повторяющихся
+            $fileNameNoExt = basename($fileName, ".$fileExt");
+            $num = 1;
+            while (Storage::exists("$path$fileName")) {
+                $fileName = "$fileNameNoExt ($num).$fileExt";
+                $num++;
+            }
+
+            // Сохранение файла в хранилище
+            $file->storeAs($path,$fileName);
+
+            $sizes = getimagesize(Storage::path($path.$fileName));
+
+            // Сохранение записи в БД
+            $imageDB = Image::create([
+                'name' => $fileName,
+                'hash' => $imageHash,
+                'date' => Carbon::createFromTimestamp(Storage::lastModified($path.$fileName)),
+                'size' => Storage::size($path.$fileName),
+                'width'  => $sizes[0],
+                'height' => $sizes[1],
+                'album_id' => $album->id,
+            ]);
+
+            // Сохранение успешного ответа API
+            $responses['successful'][] = ImageResource::make($imageDB);
+        }
+        return response($responses);
+    }
+
+    public function showAll(AlbumImagesRequest $request, $albumHash)
+    {
+        $album = Album::getByHash($albumHash);
+
+        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
+        $this->indexingImages($album);
+
+        $searchedTags = null;
+        $tagsString = $request->input('tags');
+        if ($tagsString)
+            $searchedTags = explode(',', $tagsString);
+
+        $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
+        $sortType = ($request->input('sort'));
+        if (!$sortType)
+            $sortType = $allowedSorts[0];
+
+        $isReverse = $request->has('reverse');
+
+        $perPage = intval($request->input('per_page'));
+        if (!$perPage)
+            $perPage = 30;
+
+        if (!$searchedTags) {
+            $imagesFromDB = Image
+                ::where('album_id', $album->id)
+                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->paginate($perPage);
+        } else {
+            $imagesFromDB = Image
+                ::where('album_id', $album->id)
+                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->withAllTags($searchedTags)
+                ->paginate($perPage);
+        }
+        return response([
+            'page'     => $imagesFromDB->currentPage(),
+            'per_page' => $imagesFromDB->perPage(),
+            'total'    => $imagesFromDB->total(),
+            'pictures' => ImageResource::collection($imagesFromDB->items()),
+        ]);
+    }
+
+    public function show($albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
+        return response(ImageResource::make($image));
+    }
+
+    public function orig($albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
+        $path = Storage::path('images'. $image->album->path . $image->name);
+        return response()->download($path, $image->name);
+    }
+
+    public function thumb($albumHash, $imageHash, $orientation, $size)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
 
         $allowedSizes = [200, 300, 400, 600, 900];
         $allow = false;
@@ -58,20 +209,39 @@ class ImageController extends Controller
             else
                 $thumb->scale(height: $size);
 
-            if(!Storage::exists('thumbs'))
+            if (!Storage::exists('thumbs'))
                 Storage::makeDirectory('thumbs');
 
             $thumb->toWebp(80)->save(Storage::path($thumbPath));
         }
-
-        $path = Storage::disk("local")->path($thumbPath);
-        return response()->download($path, basename($path));
+        return response()->download(Storage::path($thumbPath), basename($thumbPath));
     }
-    public function destroy($hash) {
-        $image = $this::getImageFromDB($hash);
-        $album = Album::find($image->album_id);
 
-        $imagePath = "images$album->path$image->name";
+    public function rename(FilenameCheckRequest $request, $albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
+        $imageExt = pathinfo($image->name, PATHINFO_EXTENSION);
+        $newName = $request->name;
+
+        $oldLocalPath = 'images'. $image->album->path . $image->name;
+        $newPath = $image->album->path ."$newName.$imageExt";
+        $newLocalPath = "images$newPath";
+        if (Storage::exists($newPath))
+            throw new ApiException(409, 'Album with this name already exist');
+
+        Storage::move($oldLocalPath, $newLocalPath);
+        $image->update([
+            'name' => basename($newPath),
+            'path' => "$newPath",
+        ]);
+        return response(null, 204);
+    }
+
+    public function delete($albumHash, $imageHash)
+    {
+        $image = Image::getByHash($albumHash, $imageHash);
+
+        $imagePath = 'images'. $image->album->path . $image->name;
         Storage::delete($imagePath);
 
         $thumbPath = "thumbs/$image->hash-*";
