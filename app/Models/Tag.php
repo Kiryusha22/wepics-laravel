@@ -13,7 +13,10 @@ class Tag extends Model
         'picture_id', 'tag'
     ];
 
-    // Связь с моделью Image
+    static public function findFromString($string) {
+        return Tag::where('value', $string)->first();
+    }
+
     public function images() {
         return $this->belongsToMany(
             Image::class,
@@ -21,8 +24,5 @@ class Tag extends Model
     }
     public function tagGroup() {
         return $this->belongsTo(TagGroup::class);
-    }
-    static public function findFromString($string) {
-        return Tag::where('value', $string)->first();
     }
 }

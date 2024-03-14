@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Exceptions\ApiException;
 use App\Http\Requests\AccessRightRequest;
 use App\Models\AccessRight;
+use App\Models\Album;
 
 class AccessController extends Controller
 {
-    public function showAll($hash = null) {
-        $album = AlbumController::getAlbumFromDB($hash);
+    public function showAll($hash)
+    {
+        $album = Album::getByHash($hash);
 
         $rights = $album->accessRights;
         if(count($rights) < 1)
@@ -17,8 +19,9 @@ class AccessController extends Controller
 
         return response($rights);
     }
-    public function create(AccessRightRequest $request, $hash = null) {
-        $album = AlbumController::getAlbumFromDB($hash);
+    public function create(AccessRightRequest $request, $hash)
+    {
+        $album = Album::getByHash($hash);
 
         $right = AccessRight::create([
             'album_id' => $album->id,
@@ -28,8 +31,9 @@ class AccessController extends Controller
 
         return response(null, 204);
     }
-    public function destroy(AccessRightRequest $request, $hash = null) {
-        $album = AlbumController::getAlbumFromDB($hash);
+    public function destroy(AccessRightRequest $request, $hash)
+    {
+        $album = Album::getByHash($hash);
 
         $right = AccessRight
             ::where('album_id', $album->id)

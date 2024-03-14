@@ -8,14 +8,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    use HasFactory;
     use Notifiable;
 
     protected $fillable = [
-        'nickname', 'password', 'login'
+        'nickname',
+        'password',
+        'login'
     ];
     protected $hidden = [
         'password',
@@ -24,18 +26,16 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    static public function getByToken($token) {
+    static public function getByToken($token): User {
         $tokenDB = Token::where('value', $token)->first();
         if (!$tokenDB)
             throw new ApiException(401, 'Invalid token');
         return $tokenDB->user;
     }
-
-    public function generateToken(){
+    public function generateToken(): string {
         $token = Token::create([
             'user_id' => $this->id,
             'value' => Str::random(255),
-
         ]);
         return $token->value;
     }
