@@ -97,8 +97,7 @@ Route
 ->controller(TagContoller::class)
 ->prefix('tags')
 ->group(function ($tags) {
-    $tags->get('', 'show');
-    $tags->get('{input}', 'search');
+    $tags->get('', 'showAllAndSearch');
     $tags->middleware('token.auth:admin')->group(function ($tagsManage) {
         $tagsManage->post  ('', 'create');
         $tagsManage->patch ('', 'rename');
@@ -110,11 +109,9 @@ Route
 ->controller(ReactionContoller::class)
 ->prefix('reactions')
 ->group(function ($reactions) {
-    $reactions->get('', 'show');
-    $reactions->get('{input}', 'search');
+    $reactions->get('', 'showAll');
     $reactions->middleware('token.auth:admin')->group(function ($reactionsManage) {
-        $reactionsManage->post  ('', 'create');
-        $reactionsManage->patch ('', 'rename');
-        $reactionsManage->delete('', 'delete');
+        $reactionsManage->post  ('', 'add');
+        $reactionsManage->delete('', 'remove');
     });
 });
