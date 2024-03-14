@@ -127,6 +127,8 @@ class ImageController extends Controller
     public function showAll(AlbumImagesRequest $request, $albumHash)
     {
         $album = Album::getByHash($albumHash);
+        if(!$album->hasAccess(request()->user()))
+            throw new ApiException(403, 'Forbidden for you');
 
         // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
         $this->indexingImages($album);
@@ -170,12 +172,18 @@ class ImageController extends Controller
     public function show($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
+        if(!$image->album->hasAccess(request()->user()))
+            throw new ApiException(403, 'Forbidden for you');
+
         return response(ImageResource::make($image));
     }
 
     public function orig($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
+        if(!$image->album->hasAccess(request()->user()))
+            throw new ApiException(403, 'Forbidden for you');
+
         $path = Storage::path('images'. $image->album->path . $image->name);
         return response()->download($path, $image->name);
     }
@@ -183,6 +191,8 @@ class ImageController extends Controller
     public function thumb($albumHash, $imageHash, $orientation, $size)
     {
         $image = Image::getByHash($albumHash, $imageHash);
+        if(!$image->album->hasAccess(request()->user()))
+            throw new ApiException(403, 'Forbidden for you');
 
         $allowedSizes = [200, 300, 400, 600, 900];
         $allow = false;

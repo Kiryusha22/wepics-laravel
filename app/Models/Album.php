@@ -34,6 +34,26 @@ class Album extends Model
         }
         return $album;
     }
+    public function hasAccess(User $user = null): bool {
+        $right = AccessRight
+            ::where('user_id' , null)
+            ->where('album_id', $this->id)
+            ->first();
+        if ($right?->allowed) return true;
+
+        if ($user) {
+            if ($user->is_admin) return true;
+
+            $right = AccessRight
+                ::where('user_id' , $user->id)
+                ->where('album_id', $this->id)
+                ->first();
+            if ($right?->allowed) return true;
+        }
+        // TODO: Сделать восходящую (к род. альбомам) проверку доступа, если не было запретов
+
+        return false;
+    }
 
     // Связь с моделью Image
     public function images() {
