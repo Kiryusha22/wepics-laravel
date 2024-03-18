@@ -7,17 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class AccessRight extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'user_id', 'album_id', 'allowed'
+        'user_id',
+        'album_id',
+        'allowed'
     ];
 
-    // Связь с моделью User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-
-    // Связь с моделью Album
     public function album()
     {
         return $this->belongsTo(Album::class);
