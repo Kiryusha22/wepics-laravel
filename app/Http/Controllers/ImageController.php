@@ -30,6 +30,7 @@ class ImageController extends Controller
             if (!in_array($extension, $allowedExtensions))
                 continue;
 
+            // FIXME: надо что-то делать, если есть две картинки с одинаковым хешем
             $imageModel = Image
                 ::where('name', basename($file))
                 ->where('album_id', $album->id)

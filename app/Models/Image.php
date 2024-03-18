@@ -40,7 +40,6 @@ class Image extends Model
 
     public function album() {
         return $this->belongsTo(Album::class);
-        // FIXME: одна и та же картинка может находится в разных альбомах
     }
     public function reactions() {
         return $this->belongsToMany(Reaction::class, 'reaction_image');

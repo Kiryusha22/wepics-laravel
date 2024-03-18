@@ -23,6 +23,8 @@ return new class extends Migration
                 ->cascadeOnUpdate()
                 ->cascadeOnDelete();
             $table->timestamps();
+
+            //$table->unique(['album_id', 'hash']);
         });
     }
 
