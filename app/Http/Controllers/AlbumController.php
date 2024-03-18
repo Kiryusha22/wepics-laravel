@@ -79,12 +79,12 @@ class AlbumController extends Controller
     public function delete($hash)
     {
         $album = Album::getByHash($hash);
-        $path = "images$album->path";
+        $path = Storage::path("images$album->path");
 
-        if (!$album->path == '/')
-            Storage::deleteDirectory($path);
+        if ($album->path == '/')
+            File::cleanDirectory($path);
         else
-            File::cleanDirectory(Storage::path($path));
+            File::deleteDirectory($path);
 
         $album->delete();
         return response(null, 204);

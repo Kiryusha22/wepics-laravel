@@ -23,7 +23,14 @@ class AccessController extends Controller
     {
         $album = Album::getByHash($hash);
 
-        $right = AccessRight::create([
+        $right = AccessRight
+            ::where('album_id', $album->id)
+            ->where('user_id' , $request->user_id)
+            ->first();
+        if ($right)
+            throw new ApiException(404, 'Right already exist');
+
+        AccessRight::create([
             'album_id' => $album->id,
             'user_id'  => $request->user_id,
             'allowed'  => $request->allow,
@@ -31,7 +38,7 @@ class AccessController extends Controller
 
         return response(null, 204);
     }
-    public function destroy(AccessRightRequest $request, $hash)
+    public function delete(AccessRightRequest $request, $hash)
     {
         $album = Album::getByHash($hash);
 

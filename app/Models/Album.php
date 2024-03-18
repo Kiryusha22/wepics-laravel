@@ -52,7 +52,7 @@ class Album extends Model
             ::where('user_id' , null)
             ->where('album_id', $this->id)
             ->first();
-        throw new ApiException(200, $right?->allowed);
+
         if ($right?->allowed)
             return true;
 
