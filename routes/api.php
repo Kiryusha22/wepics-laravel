@@ -19,6 +19,8 @@ use App\Http\Controllers\ReactionContoller;
 |
 */
 
+Route::get('test/{hash}/{id?}', function (...$args) {return \App\Models\Album::hasAccessFastByHash(...$args);});
+
 Route
 ::controller(UserController::class)
 ->prefix('users')
