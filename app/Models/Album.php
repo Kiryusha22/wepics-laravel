@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Album extends Model
 {
@@ -69,6 +70,43 @@ class Album extends Model
         // TODO: Сделать восходящую (к род. альбомам) проверку доступа, если не было запретов
 
         return false;
+    }
+
+    public static function hasAccessFastByHash(string $hash, int $userId = null) {
+        $res = DB
+            ::table('access_rights')
+            ->join('albums', 'access_rights.album_id', '=', 'albums.id')
+            ->where('user_id', $userId)
+            ->where('hash', $hash)
+            ->select('allowed', 'parent_album_id', 'path')
+            ->first();
+
+        return match ($res?->allowed) {
+            1 => true,
+            0 => 'false',
+        };
+        if ($res?->$path === '/') return false;
+        // FIXME: $res пустой без rightJoin
+        return Album::hasAccessFast($res->parent_album_id, $userId);
+    }
+
+    public static function hasAccessFast(int $albumId, int $userId = null): bool {
+        $res = DB
+            ::table('access_rights')
+            ->join('albums', 'access_rights.album_id', '=', 'albums.id')
+            ->where('user_id', $userId)
+            ->where('album_id', $albumId)
+            ->select('allowed', 'parent_album_id', 'path')
+            ->first();
+
+        return match ($res->allowed) {
+            1 => true,
+            0 => false,
+            default => (function ($id, $path, $userId) {
+                if($path === '/') return false;
+                return Album::hasAccessFast($id, $userId);
+            })($res?->parent_album_id, $res?->path, $userId),
+        };
     }
 
     // Связи
