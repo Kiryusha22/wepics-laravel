@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('images', function (Blueprint $table) {
             $table->id();
-            $table->string   ('name', 127);
+            $table->string   ('name', 256);
             $table->string   ('hash', 32);
             $table->dateTime ('date');
             $table->integer  ('size');
@@ -24,7 +24,8 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->timestamps();
 
-            //$table->unique(['album_id', 'hash']);
+            $table->unique(['album_id', 'hash']);
+            $table->unique(['album_id', 'name']);
         });
     }
 

@@ -72,7 +72,8 @@ Route
             $image->get('orig', 'orig');
             $image->get('thumb/{orient}{px}', 'thumb')
                 ->where('orient', '[whWH]')
-                ->where('px'    , '[0-9]+');
+                ->where('px'    , '[0-9]+')
+                ->withoutMiddleware("throttle:api");
             $image
             ->controller(TagContoller::class)
             ->middleware('token.auth:admin')

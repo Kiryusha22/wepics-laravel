@@ -30,24 +30,30 @@ class ImageController extends Controller
             if (!in_array($extension, $allowedExtensions))
                 continue;
 
-            // FIXME: надо что-то делать, если есть две картинки с одинаковым хешем
             $imageModel = Image
                 ::where('name', basename($file))
                 ->where('album_id', $album->id)
                 ->first();
-            if (!$imageModel) {
-                $sizes = getimagesize(Storage::path($file));
+            if ($imageModel) continue;
 
-                Image::create([
-                    'name' => basename($file),
-                    'hash' => md5(Storage::get($file)),
-                    'date' => Carbon::createFromTimestamp(Storage::lastModified($file)),
-                    'size' => Storage::size($file),
-                    'width'  => $sizes[0],
-                    'height' => $sizes[1],
-                    'album_id' => $album->id,
-                ]);
-            }
+            $hash = md5(Storage::get($file));
+            $imageModel = Image
+                ::where('hash', $hash)
+                ->where('album_id', $album->id)
+                ->first();
+            if ($imageModel) continue;
+
+            $sizes = getimagesize(Storage::path($file));
+
+            Image::create([
+                'name' => basename($file),
+                'hash' => $hash,
+                'date' => Carbon::createFromTimestamp(Storage::lastModified($file)),
+                'size' => Storage::size($file),
+                'width'  => $sizes[0],
+                'height' => $sizes[1],
+                'album_id' => $album->id,
+            ]);
             // FIXME: надо удалять не найденные картинки из БД
         }
     }
@@ -186,7 +192,7 @@ class ImageController extends Controller
             throw new ApiException(403, 'Forbidden for you');
 
         $path = Storage::path('images'. $image->album->path . $image->name);
-        return response()->download($path, $image->name);
+        return response()->file($path);
     }
 
     public function thumb($albumHash, $imageHash, $orientation, $size)
@@ -206,12 +212,11 @@ class ImageController extends Controller
         }
         if (!$allow) $size = max($allowedSizes);
 
-        $album = Album::find($image->album_id);
-
-        $imagePath = "images$album->path$image->name";
-        $thumbPath = "thumbs/$image->hash-$orientation$size.webp";
+        $thumbPath = "thumbs/$imageHash-$orientation$size.webp";
 
         if (!Storage::exists($thumbPath)) {
+            $imagePath = 'images'. $image->album->path . $image->name;
+
             $manager = new ImageManager(new Driver());
             $thumb = $manager->read(Storage::get($imagePath));
 
@@ -225,7 +230,7 @@ class ImageController extends Controller
 
             $thumb->toWebp(80)->save(Storage::path($thumbPath));
         }
-        return response()->download(Storage::path($thumbPath), basename($thumbPath));
+        return response()->file(Storage::path($thumbPath), ["Cache-Control" => "private, max-age=86400"]);
     }
 
     public function rename(FilenameCheckRequest $request, $albumHash, $imageHash)
