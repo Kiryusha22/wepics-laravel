@@ -12,6 +12,7 @@ use App\Http\Resources\ImageResource;
 use App\Models\Album;
 use App\Models\Image;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
@@ -179,7 +180,7 @@ class ImageController extends Controller
     public function show($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        if(!$image->album->hasAccess(request()->user()))
+        if (!$image->album->hasAccess(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         return response(ImageResource::make($image));
@@ -188,7 +189,7 @@ class ImageController extends Controller
     public function orig($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        if(!$image->album->hasAccess(request()->user()))
+        if (!$image->album->hasAccess(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         $path = Storage::path('images'. $image->album->path . $image->name);
@@ -197,40 +198,60 @@ class ImageController extends Controller
 
     public function thumb($albumHash, $imageHash, $orientation, $size)
     {
-        $image = Image::getByHash($albumHash, $imageHash);
-        if(!$image->album->hasAccess(request()->user()))
+        $user = request()->user();
+        $allow = Cache::get("access:to=$albumHash;for=$user?->id");
+
+        if ($allow === false)
             throw new ApiException(403, 'Forbidden for you');
 
-        $allowedSizes = [200, 300, 400, 600, 900];
-        $allow = false;
-        foreach ($allowedSizes as $allowedSize) {
-            if ($size <= $allowedSize) {
-                $size = $allowedSize;
-                $allow = true;
-                break;
-            }
+        if ($allow === null) {
+            $image = Image::getByHash($albumHash, $imageHash);
+            $allow = $image->album->hasAccess();
+            Cache::put("access:to=$albumHash;for=$user?->id", $allow, 86400);
         }
-        if (!$allow) $size = max($allowedSizes);
 
         $thumbPath = "thumbs/$imageHash-$orientation$size.webp";
-
         if (!Storage::exists($thumbPath)) {
-            $imagePath = 'images'. $image->album->path . $image->name;
+            $askedSize = $size;
+            $allowedSizes = [200, 300, 400, 600, 900];
+            $allowSize = false;
+            foreach ($allowedSizes as $allowedSize) {
+                if ($size <= $allowedSize) {
+                    $size = $allowedSize;
+                    $allowSize = true;
+                    break;
+                }
+            }
+            if (!$allowSize) $size = max($allowedSizes);
+            if ($askedSize != $size)
+                return redirect()->route('get.image.thumb', [
+                    $albumHash,
+                    $imageHash,
+                    $orientation,
+                    $size
+                ])->header('Cache-Control', 'max-age=86400, private');;
 
-            $manager = new ImageManager(new Driver());
-            $thumb = $manager->read(Storage::get($imagePath));
+            $thumbPath = "thumbs/$imageHash-$orientation$size.webp";
+            if (!Storage::exists($thumbPath)) {
+                if (!isset($image)) $image = Image::getByHash($albumHash, $imageHash);
 
-            if ($orientation == 'w')
-                $thumb->scale(width: $size);
-            else
-                $thumb->scale(height: $size);
+                $imagePath = 'images'. $image->album->path . $image->name;
 
-            if (!Storage::exists('thumbs'))
-                Storage::makeDirectory('thumbs');
+                $manager = new ImageManager(new Driver());
+                $thumb = $manager->read(Storage::get($imagePath));
 
-            $thumb->toWebp(80)->save(Storage::path($thumbPath));
+                if ($orientation == 'w')
+                    $thumb->scale(width: $size);
+                else
+                    $thumb->scale(height: $size);
+
+                if (!Storage::exists('thumbs'))
+                    Storage::makeDirectory('thumbs');
+
+                $thumb->toWebp(90)->save(Storage::path($thumbPath));
+            }
         }
-        return response()->file(Storage::path($thumbPath), ["Cache-Control" => "private, max-age=86400"]);
+        return response()->file(Storage::path($thumbPath), ['Cache-Control' => 'max-age=86400, private']);
     }
 
     public function rename(FilenameCheckRequest $request, $albumHash, $imageHash)
