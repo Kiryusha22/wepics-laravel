@@ -49,4 +49,7 @@ class User extends Authenticatable
     public function tags() {
         return $this->hasMany(Tag::class);
     }
+    public function tokens() {
+        return $this->hasMany(Token::class);
+    }
 }
