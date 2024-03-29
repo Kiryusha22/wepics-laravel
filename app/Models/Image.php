@@ -46,5 +46,9 @@ class Image extends Model
     }
     public function tags() {
         return $this->belongsToMany(Tag::class, 'tag_image');
+        // TODO: Понять что это
+//        return $this
+//            ->morphToMany(self::getTagClassName(), 'tag_id', 'tag_image', null, 'tag_id')
+//            ->orderBy('order_column');
     }
 }
