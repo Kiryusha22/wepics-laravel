@@ -18,8 +18,8 @@ use App\Http\Controllers\ReactionContoller;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
-Route::get('test/{hash}/{id?}', function (...$args) {return \App\Models\Album::hasAccessFastByHash(...$args);});
+// TODO: Удалить это
+//Route::get('test/{hash}/{id?}', function (...$args) {return \App\Models\Album::hasAccessFastByHash(...$args);});
 
 Route
 ::controller(UserController::class)
