@@ -8,7 +8,7 @@ enum ImageExtensionsEnum: string {
     case PNG  = 'png';
     case APNG = 'apng';
     case GIF  = 'gif';
-    case WEBM = 'webm';
+    case WEBP = 'webp';
     case AVIF = 'avif';
     case BMP  = 'bmp';
 }

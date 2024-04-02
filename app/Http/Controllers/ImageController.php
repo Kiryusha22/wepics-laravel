@@ -148,33 +148,37 @@ class ImageController extends Controller
         };
 
         $searchedTags = null;
-        $tagsString = $request->input('tags');
+        $tagsString = $request->tags;
         if ($tagsString)
             $searchedTags = explode(',', $tagsString);
 
         $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
-        $sortType = ($request->input('sort'));
-        if (!$sortType)
-            $sortType = $allowedSorts[0];
+        $sortType = $request->sort ?? $allowedSorts[0];
 
-        $isReverse = $request->has('reverse');
+        $sortDirection = $request->has('reverse') ? 'DESC' : 'ASC';
+        $naturalSort = "udf_NaturalSortFormat(name, 10, '.') $sortDirection";
+        $orderByRaw = match ($sortType) {
+            'name'  =>                                "$naturalSort",
+            'ratio' => "width / height $sortDirection, $naturalSort",
+            default =>      "$sortType $sortDirection, $naturalSort",
+        };
 
         $perPage = intval($request->input('per_page'));
         if (!$perPage)
             $perPage = 30;
 
-        if (!$searchedTags) {
+        if (!$searchedTags)
             $imagesFromDB = Image
                 ::where('album_id', $album->id)
-                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->orderByRaw($orderByRaw)
                 ->paginate($perPage);
-        } else {
+        else
             $imagesFromDB = Image
                 ::where('album_id', $album->id)
-                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->orderByRaw($orderByRaw)
                 ->withAllTags($searchedTags)
                 ->paginate($perPage);
-        }
+
 
         $response = [
             'page'     => $imagesFromDB->currentPage(),
