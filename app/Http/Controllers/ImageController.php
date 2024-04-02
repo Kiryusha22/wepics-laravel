@@ -141,10 +141,10 @@ class ImageController extends Controller
         if (!$album->hasAccessCached($user))
             throw new ApiException(403, 'Forbidden for you');
 
-        $cachePath = "albumIndexing:hash=$albumHash";
-        if (!Cache::get($cachePath)) {
+        $cacheKey = "albumIndexing:hash=$albumHash";
+        if (!Cache::get($cacheKey)) {
             $this->indexingImages($album);
-            Cache::put($cachePath, true, 600);
+            Cache::put($cacheKey, true, 600);
         };
 
         $searchedTags = null;
@@ -192,8 +192,9 @@ class ImageController extends Controller
         return response($response);
     }
     public function getSign(User $user, $albumHash): string {
-        $cached = Cache::get("signAccess:to=$albumHash;for=$user->id");
-        if ($cached) return $user->id .'_'. $cached;
+        $cacheKey = "signAccess:to=$albumHash;for=$user->id";
+        $cachedSign = Cache::get($cacheKey);
+        if ($cachedSign) return $user->id .'_'. $cachedSign;
 
         $currentDay = date("Y-m-d");
         $userToken = $user->tokens[0]->value;
@@ -201,7 +202,7 @@ class ImageController extends Controller
         $string = $userToken . $currentDay . $albumHash;
         $signCode = base64_encode(Hash::make($string));
 
-        Cache::put("signAccess:to=$albumHash;for=$user->id", $signCode, 3600);
+        Cache::put($cacheKey, $signCode, 3600);
         return $user->id .'_'. $signCode;
     }
 
@@ -216,8 +217,9 @@ class ImageController extends Controller
             return false;
         }
 
-        $cached = Cache::get("signAccess:to=$albumHash;for=$userId");
-        if ($cached === $signCode) return true;
+        $cacheKey = "signAccess:to=$albumHash;for=$userId";
+        $cachedSign = Cache::get("signAccess:to=$albumHash;for=$userId");
+        if ($cachedSign === $signCode) return true;
 
         $user = User::find($signExploded[0]);
         if (!$user)
@@ -227,7 +229,7 @@ class ImageController extends Controller
         $string = $user->tokens[0]->value . $currentDay . $albumHash;
 
         $allow = Hash::check($string, base64_decode($signExploded[1]));
-        Cache::put("signAccess:to=$albumHash;for=$userId", $signCode, 3600);
+        Cache::put($cacheKey, $signCode, 3600);
 
         return $allow;
     }

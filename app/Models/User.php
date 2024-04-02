@@ -28,15 +28,15 @@ class User extends Authenticatable
     ];
 
     static public function getByToken($token): User {
-        $cachePath = "user:token=$token";
-        $user = Cache::get($cachePath);
+        $cacheKey = "user:token=$token";
+        $user = Cache::get($cacheKey);
         if (!$user) {
             $tokenDB = Token::where('value', $token)->first();
             if (!$tokenDB)
                 throw new ApiException(401, 'Invalid token');
 
             $user = $tokenDB->user;
-            Cache::put($cachePath, $user, 1800);
+            Cache::put($cacheKey, $user, 1800);
         }
         return $user;
     }
