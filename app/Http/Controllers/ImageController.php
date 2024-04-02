@@ -137,12 +137,15 @@ class ImageController extends Controller
     public function showAll(AlbumImagesRequest $request, $albumHash)
     {
         $album = Album::getByHash($albumHash);
-        $user = request()->user();
-        if(!$album->hasAccessCached($user))
+        $user = $request->user();
+        if (!$album->hasAccessCached($user))
             throw new ApiException(403, 'Forbidden for you');
 
-        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
-        $this->indexingImages($album);
+        $cachePath = "albumIndexing:hash=$albumHash";
+        if (!Cache::get($cachePath)) {
+            $this->indexingImages($album);
+            Cache::put($cachePath, true, 600);
+        };
 
         $searchedTags = null;
         $tagsString = $request->input('tags');
@@ -179,14 +182,14 @@ class ImageController extends Controller
             'total'    => $imagesFromDB->total(),
             'pictures' => ImageResource::collection($imagesFromDB->items()),
         ];
-        if (!$album->hasAccessCached()) {
+        if (!$album->hasAccessCached())
             $response['sign'] = $this->getSign($user, $albumHash);
-        }
+
         return response($response);
     }
     public function getSign(User $user, $albumHash): string {
         $cached = Cache::get("signAccess:to=$albumHash;for=$user->id");
-        if ($cached) return $cached;
+        if ($cached) return $user->id .'_'. $cached;
 
         $currentDay = date("Y-m-d");
         $userToken = $user->tokens[0]->value;
@@ -200,9 +203,14 @@ class ImageController extends Controller
 
     public function checkSign($albumHash, $sign): bool
     {
-        $signExploded = explode('_', $sign);
-        $userId = $signExploded[0];
-        $signCode = $signExploded[1];
+        try {
+            $signExploded = explode('_', $sign);
+            $userId   = $signExploded[0];
+            $signCode = $signExploded[1];
+        }
+        catch (\Exception $e) {
+            return false;
+        }
 
         $cached = Cache::get("signAccess:to=$albumHash;for=$userId");
         if ($cached === $signCode) return true;

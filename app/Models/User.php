@@ -7,6 +7,7 @@ use App\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class User extends Authenticatable
@@ -27,10 +28,17 @@ class User extends Authenticatable
     ];
 
     static public function getByToken($token): User {
-        $tokenDB = Token::where('value', $token)->first();
-        if (!$tokenDB)
-            throw new ApiException(401, 'Invalid token');
-        return $tokenDB->user;
+        $cachePath = "user:token=$token";
+        $user = Cache::get($cachePath);
+        if (!$user) {
+            $tokenDB = Token::where('value', $token)->first();
+            if (!$tokenDB)
+                throw new ApiException(401, 'Invalid token');
+
+            $user = $tokenDB->user;
+            Cache::put($cachePath, $user, 1800);
+        }
+        return $user;
     }
     public function generateToken(): string {
         $token = Token::create([

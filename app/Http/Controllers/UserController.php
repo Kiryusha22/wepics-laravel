@@ -12,13 +12,14 @@ use App\Models\Token;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
     public function login(UserLoginRequest $request) {
         $credentials = request(['login', 'password']);
         if (!Auth::attempt($credentials))
-            return response('Authorization failed', 401);
+            throw new ApiException(401, 'Authorization failed');
 
         $user = Auth::user();
 
@@ -35,7 +36,9 @@ class UserController extends Controller
         ], 201);
     }
     public function logout(Request $request) {
-        Token::where('value', $request->bearerToken())->delete();
+        $token = $request->bearerToken();
+        Token::where('value', $token)->delete();
+        Cache::delete("user:token=$token");
         return response(null, 204);
     }
     public function showAll() {

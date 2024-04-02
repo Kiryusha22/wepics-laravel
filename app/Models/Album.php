@@ -71,7 +71,7 @@ class Album extends Model
         return false;
     }
 
-    public function hasAccessCached($user = null) {
+    public function hasAccessCached(User $user = null) {
         if ($user?->is_admin) return true;
 
         $cacheKey = "access:to=$this->hash;for=$user?->id";
@@ -85,16 +85,16 @@ class Album extends Model
         return $allow;
     }
 
-     public static function hasAccessCachedByHash($albumHash, $user = null) {
+    public static function hasAccessCachedByHash(string $hash, User $user = null) {
         if ($user?->is_admin) return true;
 
-        $cacheKey = "access:to=$albumHash;for=$user?->id";
+        $cacheKey = "access:to=$hash;for=$user?->id";
         $allow = Cache::get($cacheKey);
 
         if ($allow === null) {
-            $album = Album::getByHash($albumHash);
+            $album = Album::getByHash($hash);
             $allow = $album->hasAccess($user);
-            //$allow = Album::hasAccessFastByHash($albumHash, $user?->id); // TODO: перейти на крутой метод
+            //$allow = Album::hasAccessFastByHash($hash, $user?->id); // TODO: перейти на крутой метод
             Cache::put($cacheKey, $allow, 86400);
         }
         return $allow;
