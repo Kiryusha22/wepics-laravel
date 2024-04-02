@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Http\Requests\AccessRightRequest;
 use App\Models\AccessRight;
 use App\Models\Album;
+use Illuminate\Support\Facades\Cache;
 
 class AccessController extends Controller
 {
@@ -30,6 +31,7 @@ class AccessController extends Controller
         if ($right)
             throw new ApiException(404, 'Right already exist');
 
+        Cache::flush(); // FIXME: костыль
         AccessRight::create([
             'album_id' => $album->id,
             'user_id'  => $request->user_id,
@@ -50,6 +52,7 @@ class AccessController extends Controller
         if (!$right)
             throw new ApiException(404, 'Access right not found');
 
+        Cache::flush(); // FIXME: костыль
         $right->delete();
 
         return response(null, '204');

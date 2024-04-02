@@ -11,8 +11,11 @@ use App\Http\Requests\UploadRequest;
 use App\Http\Resources\ImageResource;
 use App\Models\Album;
 use App\Models\Image;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -134,52 +137,160 @@ class ImageController extends Controller
     public function showAll(AlbumImagesRequest $request, $albumHash)
     {
         $album = Album::getByHash($albumHash);
-        if(!$album->hasAccess(request()->user()))
+        $user = $request->user();
+        if (!$album->hasAccessCached($user))
             throw new ApiException(403, 'Forbidden for you');
 
-        // FIXME: каждый раз при пролистывании страниц проверять картинки? Много производительности может кушать
-        $this->indexingImages($album);
+        $cacheKey = "albumIndexing:hash=$albumHash";
+        if (!Cache::get($cacheKey)) {
+            $this->indexingImages($album);
+            Cache::put($cacheKey, true, 600);
+        };
 
         $searchedTags = null;
-        $tagsString = $request->input('tags');
+        $tagsString = $request->tags;
         if ($tagsString)
             $searchedTags = explode(',', $tagsString);
 
         $allowedSorts = array_column(SortTypesEnum::cases(), 'value');
-        $sortType = ($request->input('sort'));
-        if (!$sortType)
-            $sortType = $allowedSorts[0];
+        $sortType = $request->sort ?? $allowedSorts[0];
 
-        $isReverse = $request->has('reverse');
+        $sortDirection = $request->has('reverse') ? 'DESC' : 'ASC';
+        $naturalSort = "udf_NaturalSortFormat(name, 10, '.') $sortDirection";
+        $orderByRaw = match ($sortType) {
+            'name'  =>                                "$naturalSort",
+            'ratio' => "width / height $sortDirection, $naturalSort",
+            default =>      "$sortType $sortDirection, $naturalSort",
+        };
 
         $perPage = intval($request->input('per_page'));
         if (!$perPage)
             $perPage = 30;
 
-        if (!$searchedTags) {
+        if (!$searchedTags)
             $imagesFromDB = Image
                 ::where('album_id', $album->id)
-                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->orderByRaw($orderByRaw)
                 ->paginate($perPage);
-        } else {
+        else
             $imagesFromDB = Image
                 ::where('album_id', $album->id)
-                ->orderBy($sortType, $isReverse ? 'desc' : 'asc')
+                ->orderByRaw($orderByRaw)
                 ->withAllTags($searchedTags)
                 ->paginate($perPage);
-        }
-        return response([
+
+
+        $response = [
             'page'     => $imagesFromDB->currentPage(),
             'per_page' => $imagesFromDB->perPage(),
             'total'    => $imagesFromDB->total(),
             'pictures' => ImageResource::collection($imagesFromDB->items()),
-        ]);
+        ];
+        if (!$album->hasAccessCached())
+            $response['sign'] = $this->getSign($user, $albumHash);
+
+        return response($response);
+    }
+    public function getSign(User $user, $albumHash): string {
+        $cacheKey = "signAccess:to=$albumHash;for=$user->id";
+        $cachedSign = Cache::get($cacheKey);
+        if ($cachedSign) return $user->id .'_'. $cachedSign;
+
+        $currentDay = date("Y-m-d");
+        $userToken = $user->tokens[0]->value;
+
+        $string = $userToken . $currentDay . $albumHash;
+        $signCode = base64_encode(Hash::make($string));
+
+        Cache::put($cacheKey, $signCode, 3600);
+        return $user->id .'_'. $signCode;
+    }
+
+    public function checkSign($albumHash, $sign): bool
+    {
+        try {
+            $signExploded = explode('_', $sign);
+            $userId   = $signExploded[0];
+            $signCode = $signExploded[1];
+        }
+        catch (\Exception $e) {
+            return false;
+        }
+
+        $cacheKey = "signAccess:to=$albumHash;for=$userId";
+        $cachedSign = Cache::get("signAccess:to=$albumHash;for=$userId");
+        if ($cachedSign === $signCode) return true;
+
+        $user = User::find($signExploded[0]);
+        if (!$user)
+            return false;
+
+        $currentDay = date("Y-m-d");
+        $string = $user->tokens[0]->value . $currentDay . $albumHash;
+
+        $allow = Hash::check($string, base64_decode($signExploded[1]));
+        Cache::put($cacheKey, $signCode, 3600);
+
+        return $allow;
+    }
+    public function thumb($albumHash, $imageHash, $orientation, $size)
+    {
+        // Проверка доступа
+        $sign = request()->sign;
+        if (
+            !Album::hasAccessCachedByHash($albumHash) &&
+            !($sign && $this->checkSign($albumHash, $sign))
+        ) throw new ApiException(403, 'Forbidden for you');
+
+        // Проверка наличия превью в файлах
+        $thumbPath = "thumbs/$imageHash-$orientation$size.webp";
+        if (!Storage::exists($thumbPath)) {
+            // Проверка запрашиваемого размера и редирект, если не прошло
+            $askedSize = $size;
+            $allowedSizes = [144, 240, 360, 480, 720, 1080];
+            $allowSize = false;
+            foreach ($allowedSizes as $allowedSize) {
+                if ($size <= $allowedSize) {
+                    $size = $allowedSize;
+                    $allowSize = true;
+                    break;
+                }
+            }
+            if (!$allowSize) $size = $allowedSizes[count($allowedSizes)-1];
+            if ($askedSize != $size)
+                return redirect()->route('get.image.thumb', [
+                    $albumHash, $imageHash, $orientation, $size
+                ])->header('Cache-Control', ['max-age=86400', 'private']);;
+
+            // Проверка наличия превью в файлах x2
+            $thumbPath = "thumbs/$imageHash-$orientation$size.webp";
+            if (!Storage::exists($thumbPath)) {
+                // Создание превью
+                if (!isset($image)) $image = Image::getByHash($albumHash, $imageHash);
+
+                $imagePath = 'images'. $image->album->path . $image->name;
+
+                $manager = new ImageManager(new Driver());
+                $thumb = $manager->read(Storage::get($imagePath));
+
+                if ($orientation == 'w')
+                    $thumb->scale(width: $size);
+                else
+                    $thumb->scale(height: $size);
+
+                if (!Storage::exists('thumbs'))
+                    Storage::makeDirectory('thumbs');
+
+                $thumb->toWebp(90)->save(Storage::path($thumbPath));
+            }
+        }
+        return response()->file(Storage::path($thumbPath), ['Cache-Control' => ['max-age=86400', 'private']]);
     }
 
     public function show($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        if(!$image->album->hasAccess(request()->user()))
+        if (!$image->album->hasAccess(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         return response(ImageResource::make($image));
@@ -188,49 +299,11 @@ class ImageController extends Controller
     public function orig($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        if(!$image->album->hasAccess(request()->user()))
+        if (!$image->album->hasAccess(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         $path = Storage::path('images'. $image->album->path . $image->name);
         return response()->file($path);
-    }
-
-    public function thumb($albumHash, $imageHash, $orientation, $size)
-    {
-        $image = Image::getByHash($albumHash, $imageHash);
-        if(!$image->album->hasAccess(request()->user()))
-            throw new ApiException(403, 'Forbidden for you');
-
-        $allowedSizes = [200, 300, 400, 600, 900];
-        $allow = false;
-        foreach ($allowedSizes as $allowedSize) {
-            if ($size <= $allowedSize) {
-                $size = $allowedSize;
-                $allow = true;
-                break;
-            }
-        }
-        if (!$allow) $size = max($allowedSizes);
-
-        $thumbPath = "thumbs/$imageHash-$orientation$size.webp";
-
-        if (!Storage::exists($thumbPath)) {
-            $imagePath = 'images'. $image->album->path . $image->name;
-
-            $manager = new ImageManager(new Driver());
-            $thumb = $manager->read(Storage::get($imagePath));
-
-            if ($orientation == 'w')
-                $thumb->scale(width: $size);
-            else
-                $thumb->scale(height: $size);
-
-            if (!Storage::exists('thumbs'))
-                Storage::makeDirectory('thumbs');
-
-            $thumb->toWebp(80)->save(Storage::path($thumbPath));
-        }
-        return response()->file(Storage::path($thumbPath), ["Cache-Control" => "private, max-age=86400"]);
     }
 
     public function rename(FilenameCheckRequest $request, $albumHash, $imageHash)

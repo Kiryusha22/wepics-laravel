@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class Album extends Model
 {
@@ -44,20 +46,18 @@ class Album extends Model
      */
     public function hasAccess(User $user = null): bool {
         // Проверка админ ли пользователь
-        if ($user?->is_admin)
-            return true;
+        //if ($user?->is_admin)
+        //    return true;
 
         // Проверка есть ли доступ гостю
         $right = AccessRight
             ::where('user_id' , null)
             ->where('album_id', $this->id)
             ->first();
-
         if ($right?->allowed)
             return true;
 
         if ($user) {
-
             // Проверка есть ли доступ пользователю
             $right = AccessRight
                 ::where('user_id' , $user->id)
@@ -69,6 +69,72 @@ class Album extends Model
         // TODO: Сделать восходящую (к род. альбомам) проверку доступа, если не было запретов
 
         return false;
+    }
+
+    public function hasAccessCached(User $user = null) {
+        if ($user?->is_admin) return true;
+
+        $cacheKey = "access:to=$this->hash;for=$user?->id";
+        $allow = Cache::get($cacheKey);
+
+        if ($allow === null) {
+            $allow = $this->hasAccess($user);
+            //$allow = Album::hasAccessFastById($this->id, $user?->id); // TODO: перейти на крутой метод
+            Cache::put($cacheKey, $allow, 86400);
+        }
+        return $allow;
+    }
+
+    public static function hasAccessCachedByHash(string $hash, User $user = null) {
+        if ($user?->is_admin) return true;
+
+        $cacheKey = "access:to=$hash;for=$user?->id";
+        $allow = Cache::get($cacheKey);
+
+        if ($allow === null) {
+            $album = Album::getByHash($hash);
+            $allow = $album->hasAccess($user);
+            //$allow = Album::hasAccessFastByHash($hash, $user?->id); // TODO: перейти на крутой метод
+            Cache::put($cacheKey, $allow, 86400);
+        }
+        return $allow;
+    }
+
+    public static function hasAccessFastByHash(string $hash, int $userId = null) {
+        $res = DB
+            ::table('access_rights')
+            ->rightJoin('albums', 'access_rights.album_id', '=', 'albums.id')
+            ->where('user_id', $userId)
+            ->where('hash', $hash)
+            ->select('allowed', 'parent_album_id', 'path')
+            ->first();
+
+        if ($res !== null) {
+            if ($res->allowed !== null) return $res->allowed;
+            if ($res->path === '/')     return false;
+        }
+        return Album::hasAccessFastById($res->parent_album_id, $userId);
+    }
+
+    public static function hasAccessFastById(int $albumId, int $userId = null): bool {
+        $res = DB
+            ::table('access_rights')
+            ->rightJoin('albums', 'access_rights.album_id', '=', 'albums.id')
+            ->where('user_id', $userId)
+            ->where('albums_id', $albumId)
+            ->select('allowed', 'parent_album_id', 'path')
+            ->first();
+        // TODO: сделать несколько селектов в одном запросе, а то where обнуляют все поиски альбома и path уже не чекнуть
+        throw new ApiException(500, [
+            'res' => $res,
+            'user_id' => $userId,
+            'album_id' => $albumId,
+        ]);
+        if ($res !== null) {
+            if ($res->allowed !== null) return $res->allowed;
+            if ($res->path === '/')     return false;
+        }
+        return Album::hasAccessFastById($res->parent_album_id, $userId);
     }
 
     // Связи

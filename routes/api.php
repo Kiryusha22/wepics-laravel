@@ -19,6 +19,8 @@ use App\Http\Controllers\ReactionContoller;
 |
 */
 
+Route::get('test/{hash}/{id?}', function (...$args) {return \App\Models\Album::hasAccessFastByHash(...$args);});
+
 Route
 ::controller(UserController::class)
 ->prefix('users')
@@ -73,7 +75,8 @@ Route
             $image->get('thumb/{orient}{px}', 'thumb')
                 ->where('orient', '[whWH]')
                 ->where('px'    , '[0-9]+')
-                ->withoutMiddleware("throttle:api");
+                ->withoutMiddleware("throttle:api")
+                ->name('get.image.thumb');
             $image
             ->controller(TagContoller::class)
             ->middleware('token.auth:admin')
