@@ -26,13 +26,16 @@ class UserController extends Controller
         $token = $user->generateToken();
         return response([
             'token' => $token,
+            'nickname' => $user->nickname,
+            'isAdmin' => $user->is_admin,
         ]);
     }
     public function reg(UserRegisterRequest $request) {
         $user = User::create($request->all());
-        $token= $user->generateToken();
+        $token = $user->generateToken();
         return response([
-            'token' => $token
+            'token' => $token,
+            'nickname' => $user->nickname,
         ], 201);
     }
     public function logout(Request $request) {
