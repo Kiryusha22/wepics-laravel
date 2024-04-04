@@ -10,7 +10,8 @@ return new class extends Migration
     {
         Schema::create('reactions', function (Blueprint $table) {
            $table->id();
-           $table->string('value',4)->unique();
+           $table->string('value',4);//FIXME:Надо добавить уникальность
+
            $table->timestamps();
         });
     }

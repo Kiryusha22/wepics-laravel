@@ -42,7 +42,7 @@ class Image extends Model
         return $this->belongsTo(Album::class);
     }
     public function reactions() {
-        return $this->belongsToMany(Reaction::class, 'reaction_image');
+        return $this->belongsToMany(Reaction::class, 'reaction_images');
     }
     public function tags() {
         return $this->belongsToMany(Tag::class, 'tag_image');

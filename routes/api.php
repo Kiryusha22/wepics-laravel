@@ -6,7 +6,7 @@ use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\AccessController;
 use App\Http\Controllers\TagContoller;
-use App\Http\Controllers\ReactionContoller;
+use App\Http\Controllers\ReactionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,7 +83,7 @@ Route
                 $imageTags->delete('', 'unset');
             });
             $image
-            ->controller(ReactionContoller::class)
+            ->controller(ReactionController::class)
             ->middleware('token.auth:user')
             ->prefix('reactions')
             ->group(function ($imageReactions) {
@@ -107,7 +107,7 @@ Route
 });
 Route
 ::middleware('token.auth:guest')
-->controller(ReactionContoller::class)
+->controller(ReactionController::class)
 ->prefix('reactions')
 ->group(function ($reactions) {
     $reactions->get('', 'showAll');
