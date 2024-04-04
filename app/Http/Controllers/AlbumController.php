@@ -14,7 +14,7 @@ class AlbumController extends Controller
     public function get($hash)
     {
         $parentAlbum = Album::getByHash($hash);
-        if(!$parentAlbum->hasAccess(request()->user()))
+        if(!$parentAlbum->hasAccessCached(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         $localPath = "images$parentAlbum->path";

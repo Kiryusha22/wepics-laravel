@@ -8,5 +8,5 @@ enum SortTypesEnum: string {
     case SIZE   = 'size';
     case WIDTH  = 'width';
     case HEIGHT = 'height';
-//    case RATIO  = 'ratio';
+    case RATIO  = 'ratio';
 }
