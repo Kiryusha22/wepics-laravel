@@ -12,8 +12,7 @@ class Image extends Model
     use HasFactory;
     use HasTags;
 
-    public static function getTagClassName(): string
-    {
+    public static function getTagClassName(): string {
         return Tag::class;
     }
 
@@ -27,7 +26,8 @@ class Image extends Model
         'album_id',
     ];
 
-    static public function getByHash($albumHash, $imageHash) {
+    static public function getByHash($albumHash, $imageHash)
+    {
         $album = Album::getByHash($albumHash);
         $image = Image
             ::where('album_id', $album->id)

@@ -10,7 +10,7 @@ class ApiRequest extends FormRequest
 {
     public function failedValidation(Validator $validator)
     {
-        throw new ApiException(422, $validator->errors());
+        throw new ApiException(422, 'Request validation error', $validator->errors());
     }
 //    public function failedAuthorization()
 //    {

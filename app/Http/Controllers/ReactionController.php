@@ -21,20 +21,19 @@ class ReactionController extends Controller
     public function add(ReactionRequest $request)
     {
         foreach ($request->reactions  as $reaction)
-        {
             Reaction::create(['value'=>$reaction]);
-        }
+
         return response(null, 204);
 
     }
     // Удаление разрешённых реакций
     public function remove(ReactionRequest $request)
     {
-
-        foreach ($request->reactions  as $reaction)
-        {
+        foreach ($request->reactions  as $reaction) {
             $reactionFromDB = Reaction::where('value',$reaction)->first();
-            if(!$reactionFromDB) throw new ApiException(404, 'reaction not found');
+            if(!$reactionFromDB)
+                throw new ApiException(404, "Reaction \"$reaction\" not found");
+
             $reactionFromDB->delete();
         }
         return response(null, 204);
@@ -42,59 +41,57 @@ class ReactionController extends Controller
     // Выставление реакций на картинку
     public function set(Request $request, $albumHash, $imageHash)
     {
-        // Проверяем, передан ли эмодзи
-       $emoji = $request->input('emoji');
-        if (!$emoji) {
-            return response()->json(['message' => 'Эмодзи не указан'], 422);
-        }
+       $emoji = $request->reaction;
+        if (!$emoji)
+            throw new ApiException(422, 'Reaction not specified');
 
-        // Проверяем, есть ли такое эмодзи в "разрешённых" реакциях
-        $allowedReaction = Reaction::whereRaw("value LIKE '$emoji'")
-            ->first();
+        $allowedReaction = Reaction::where('value', 'LIKE', $emoji)->first();
+        if (!$allowedReaction)
+            throw new ApiException(404, 'Reaction not allowed');
 
-        if (!$allowedReaction) {
-            return response()->json(['message' => 'Эмодзи не разрешено'], 403);
-        }
         $image = Image::getByHash($albumHash, $imageHash);
+
+        $reactionImage = ReactionImage
+            ::where('image_id', $image->id)
+            ->where('reaction_id', $allowedReaction->id)
+            ->where('user_id', $request->user()->id)
+            ->first();
+        if ($reactionImage)
+            throw new ApiException(409, 'You already set this reaction');
+
         ReactionImage::create([
             'image_id'=>$image->id,
             'reaction_id'=> $allowedReaction->id,
             'user_id'=> request()->user()->id
         ]);
-        return response()->json(['message' => 'Реакция установлена'], 200);
+        return response(null, 204);
     }
     // Удаление реакции с картинки
     public function unset(Request $request, $albumHash, $imageHash)
     {
-        // Проверяем, передан ли эмодзи
-        $emoji = $request->input('emoji');
-        if (!$emoji) {
-            return response()->json(['message' => 'Эмодзи не указан'], 422);
-        }
+        $emoji = $request->reaction;
+        if (!$emoji)
+            throw new ApiException(422, 'Reaction not specified');
 
-        // Получаем картинку по хешу
+        $allowedReaction = Reaction::where('value', 'LIKE', $emoji)->first();
+        if (!$allowedReaction)
+            throw new ApiException(404, 'Reaction not allowed');
+
         $image = Image::getByHash($albumHash, $imageHash);
-        if (!$image) {
-            return response()->json(['message' => 'Картинка не найдена'], 404);
-        }
 
-        // Получаем реакцию по эмодзи
-        $reaction = Reaction::where("value", "LIKE", $emoji)->first();
-        if (!$reaction) {
-            return response()->json(['message' => 'Реакция не найдена'], 404);
-        }
-
-        // Удаляем реакцию с картинки
-        $reactionImage = ReactionImage::where('image_id', $image->value)
-            ->where('reaction_id', $reaction->id)
+        $reactionImage = ReactionImage
+            ::where('image_id', $image->id)
+            ->where('reaction_id', $allowedReaction->id)
             ->where('user_id', $request->user()->id)
             ->first();
+        if (!$reactionImage)
+            throw new ApiException(409, 'You did not set this reaction');
 
-        if ($reactionImage) {
-            $reactionImage->delete();
-            return response()->json(['message' => 'Реакция удалена'], 200);
-        } else {
-            return response()->json(['message' => 'Реакция не найдена'], 404);
-        }
+        ReactionImage
+            ::where('image_id', $image->id)
+            ->where('reaction_id', $allowedReaction->id)
+            ->where('user_id', $request->user()->id)
+            ->delete();
+        return response(null, 204);
     }
 }

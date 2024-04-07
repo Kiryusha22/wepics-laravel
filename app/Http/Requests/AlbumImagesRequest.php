@@ -12,7 +12,7 @@ class AlbumImagesRequest extends ApiRequest
     {
         return [
             'page'      => 'int|min:1',
-            'per_page'  => 'int|min:1',
+            'limit'     => 'int|min:1',
             'sort'      => [Rule::enum(SortTypesEnum::class)],
             'tags'      => 'string',
             'reverse'   => 'nullable',

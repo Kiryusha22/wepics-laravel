@@ -10,19 +10,10 @@ class Tag extends Model
     use HasFactory;
 
     protected $fillable = [
-        'picture_id', 'tag'
+        'value'
     ];
 
-    static public function findFromString($string) {
-        return Tag::where('value', $string)->first();
-    }
-
     public function images() {
-        return $this->belongsToMany(
-            Image::class,
-            'tag_image');
-    }
-    public function tagGroup() {
-        return $this->belongsTo(TagGroup::class);
+        return $this->belongsToMany(Image::class, 'tag_image');
     }
 }

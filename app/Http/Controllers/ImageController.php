@@ -163,21 +163,21 @@ class ImageController extends Controller
             default =>      "$sortType $sortDirection, $naturalSort",
         };
 
-        $perPage = intval($request->input('per_page'));
-        if (!$perPage)
-            $perPage = 30;
+        $limit = intval($request->limit);
+        if (!$limit)
+            $limit = 30;
 
         if (!$searchedTags)
             $imagesFromDB = Image
                 ::where('album_id', $album->id)
                 ->orderByRaw($orderByRaw)
-                ->paginate($perPage);
+                ->paginate($limit);
         else
             $imagesFromDB = Image
                 ::where('album_id', $album->id)
                 ->orderByRaw($orderByRaw)
                 ->withAllTags($searchedTags)
-                ->paginate($perPage);
+                ->paginate($limit);
 
 
         $response = [
@@ -299,7 +299,7 @@ class ImageController extends Controller
     public function orig($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        if (!$image->album->hasAccess(request()->user()))
+        if (!$image->album->hasAccessCached(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         $path = Storage::path('images'. $image->album->path . $image->name);
