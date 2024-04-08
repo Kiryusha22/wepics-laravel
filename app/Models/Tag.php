@@ -10,8 +10,12 @@ class Tag extends Model
     use HasFactory;
 
     protected $fillable = [
-        'value'
+        'value', 'type'
     ];
+
+    static public function findFromString($string) {
+        return Tag::where('value', $string)->first();
+    }
 
     public function images() {
         return $this->belongsToMany(Image::class, 'tag_image');

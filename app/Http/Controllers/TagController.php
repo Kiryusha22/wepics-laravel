@@ -8,6 +8,7 @@ use App\Models\Image;
 use App\Models\Tag;
 use App\Exceptions\ApiException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TagController extends Controller
 {
@@ -36,7 +37,6 @@ class TagController extends Controller
         if (!$tag)
             throw new ApiException(404, 'Tag not found');
 
-        return $request->new_value;
         $tagWithNewValue = Tag::where('value', $request->new_value)->first();
         if ($tag)
             throw new ApiException(409, 'Tag with this value already exist');
@@ -48,7 +48,7 @@ class TagController extends Controller
     // Удаление тега
     public function delete(TagRequest $request)
     {
-        $tag = Tag::where('value', $request->value)->first();
+        $tag = Tag::where('name', $request->value)->first();
         if (!$tag)
             throw new ApiException(404, 'Tag not found');
 
@@ -63,7 +63,19 @@ class TagController extends Controller
             throw new ApiException(404, 'Tag not found');
 
         $image = Image::getByHash($albumHash, $imageHash);
-        $image->attachTag($tag);
+
+        $attachedTag = DB::table('tag_image')
+            ->where('image_id', $image->id)
+            ->where('tag_id', $tag->id)
+            ->first();
+        if ($attachedTag)
+            throw new ApiException(409, 'This tag already set');
+
+        DB::table('tag_image')->insert([
+            'image_id' => $image->id,
+            'tag_id' => $tag->id,
+        ]);
+
         return response(null, 204);
     }
     // Удаление тега с картинки
@@ -74,7 +86,19 @@ class TagController extends Controller
             throw new ApiException(404, 'Tag not found');
 
         $image = Image::getByHash($albumHash, $imageHash);
-        $image->detachTag($tag);
+
+        $attachedTag = DB::table('tag_image')
+            ->where('image_id', $image->id)
+            ->where('tag_id', $tag->id)
+            ->first();
+        if (!$attachedTag)
+            throw new ApiException(409, 'This tag already not set');
+
+        DB::table('tag_image')
+            ->where('image_id', $image->id)
+            ->where('tag_id', $tag->id)
+            ->delete();
+
         return response(null, 204);
     }
 }
