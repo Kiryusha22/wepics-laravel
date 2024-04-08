@@ -10,7 +10,7 @@ class Tag extends Model
     use HasFactory;
 
     protected $fillable = [
-        'picture_id', 'tag'
+        'value', 'type'
     ];
 
     static public function findFromString($string) {
@@ -18,11 +18,6 @@ class Tag extends Model
     }
 
     public function images() {
-        return $this->belongsToMany(
-            Image::class,
-            'tag_image');
-    }
-    public function tagGroup() {
-        return $this->belongsTo(TagGroup::class);
+        return $this->belongsToMany(Image::class, 'tag_image');
     }
 }

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('reaction_image', function (Blueprint $table) {
+        Schema::create('reaction_images', function (Blueprint $table) {
             $table->foreignId('image_id')
                 ->references('id')
                 ->on('images')
@@ -24,12 +24,12 @@ return new class extends Migration
                 ->on('users')
                 ->cascadeOnUpdate()
                 ->cascadeOnDelete();
+            $table->timestamps();
             $table->primary(['image_id', 'reaction_id', 'user_id']);
         });
     }
-
     public function down(): void
     {
-        Schema::dropIfExists('reaction_image');
+        Schema::dropIfExists('reaction_images');
     }
 };

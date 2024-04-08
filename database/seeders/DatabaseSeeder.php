@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Reaction;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,16 @@ class DatabaseSeeder extends Seeder
             'login'    => 'admin',
             'password' => 'admin123',
             'is_admin' => true,
+        ]);
+
+        Reaction::insert([
+            ['value' => '👍'],
+            ['value' => '👎'],
+            ['value' => '⚡'],
+            ['value' => '🎉'],
+            ['value' => '❤️'],
+            ['value' => '🥵'],
+            ['value' => '🥛'],
         ]);
 
         DB::unprepared("DROP FUNCTION IF EXISTS `udf_FirstNumberPos`");

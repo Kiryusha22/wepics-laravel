@@ -5,8 +5,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\AccessController;
-use App\Http\Controllers\TagContoller;
-use App\Http\Controllers\ReactionContoller;
+use App\Http\Controllers\TagController;
+use App\Http\Controllers\ReactionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,7 +78,7 @@ Route
                 ->withoutMiddleware("throttle:api")
                 ->name('get.image.thumb');
             $image
-            ->controller(TagContoller::class)
+            ->controller(TagController::class)
             ->middleware('token.auth:admin')
             ->prefix('tags')
             ->group(function ($imageTags) {
@@ -86,7 +86,7 @@ Route
                 $imageTags->delete('', 'unset');
             });
             $image
-            ->controller(ReactionContoller::class)
+            ->controller(ReactionController::class)
             ->middleware('token.auth:user')
             ->prefix('reactions')
             ->group(function ($imageReactions) {
@@ -98,10 +98,10 @@ Route
 });
 Route
 ::middleware('token.auth:guest')
-->controller(TagContoller::class)
+->controller(TagController::class)
 ->prefix('tags')
 ->group(function ($tags) {
-    $tags->get('', 'showAllAndSearch');
+    $tags->get('', 'showAllOrSearch');
     $tags->middleware('token.auth:admin')->group(function ($tagsManage) {
         $tagsManage->post  ('', 'create');
         $tagsManage->patch ('', 'rename');
@@ -110,7 +110,7 @@ Route
 });
 Route
 ::middleware('token.auth:guest')
-->controller(ReactionContoller::class)
+->controller(ReactionController::class)
 ->prefix('reactions')
 ->group(function ($reactions) {
     $reactions->get('', 'showAll');

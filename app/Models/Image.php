@@ -12,8 +12,7 @@ class Image extends Model
     use HasFactory;
     use HasTags;
 
-    public static function getTagClassName(): string
-    {
+    public static function getTagClassName(): string {
         return Tag::class;
     }
 
@@ -27,7 +26,8 @@ class Image extends Model
         'album_id',
     ];
 
-    static public function getByHash($albumHash, $imageHash) {
+    static public function getByHash($albumHash, $imageHash)
+    {
         $album = Album::getByHash($albumHash);
         $image = Image
             ::where('album_id', $album->id)
@@ -42,9 +42,13 @@ class Image extends Model
         return $this->belongsTo(Album::class);
     }
     public function reactions() {
-        return $this->belongsToMany(Reaction::class, 'reaction_image');
+        return $this->belongsToMany(Reaction::class, 'reaction_images');
     }
     public function tags() {
         return $this->belongsToMany(Tag::class, 'tag_image');
+        // TODO: Понять что это
+//        return $this
+//            ->morphToMany(self::getTagClassName(), 'tag_id', 'tag_image', null, 'tag_id')
+//            ->orderBy('order_column');
     }
 }
