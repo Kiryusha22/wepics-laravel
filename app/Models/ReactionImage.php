@@ -12,12 +12,13 @@ class ReactionImage extends Model
         'reaction_id',
         'user_id'
     ];
-    public function picture()
-    {
-        return $this->belongsToMany(Image::class, 'create_reaction_images');
+    public function image() {
+        return $this->belongsToMany(Image::class);
     }
-    public function user()
-    {
-        return $this->belongsToMany(User::class, 'create_reaction_images');
+    public function user() {
+        return $this->belongsToMany(User::class);
+    }
+    public function reaction() {
+        return $this->belongsToMany(Reaction::class);
     }
 }
