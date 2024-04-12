@@ -38,7 +38,7 @@ class TagController extends Controller
             throw new ApiException(404, 'Tag not found');
 
         $tagWithNewValue = Tag::where('value', $request->new_value)->first();
-        if ($tag)
+        if ($tagWithNewValue)
             throw new ApiException(409, 'Tag with this value already exist');
 
         $tag->value = $request->new_value;
