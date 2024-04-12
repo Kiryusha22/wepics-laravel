@@ -290,7 +290,7 @@ class ImageController extends Controller
     public function show($albumHash, $imageHash)
     {
         $image = Image::getByHash($albumHash, $imageHash);
-        if (!$image->album->hasAccess(request()->user()))
+        if (!$image->album->hasAccessCached(request()->user()))
             throw new ApiException(403, 'Forbidden for you');
 
         return response(ImageResource::make($image));
