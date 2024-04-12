@@ -89,13 +89,13 @@ class ImageController extends Controller
 
             // Проверка существования того же файла
             $imageHash = md5(File::get($file->getRealPath()));
-            $imageFounded = false;
-            try {
-                Image::getByHash($albumHash, $imageHash);
-            } finally {
-                $imageFounded = true;
-            }
-            if ($imageFounded) {
+
+            $image = Image
+                ::where('album_id', $album->id)
+                ->where('hash', $imageHash)
+                ->first();
+
+            if ($image) {
                 // Сохранение плохого ответа API
                 $responses['errored'][] = [
                     'name'    => $fileName,
