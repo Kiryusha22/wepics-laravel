@@ -48,7 +48,7 @@ class TagController extends Controller
     // Удаление тега
     public function delete(TagRequest $request)
     {
-        $tag = Tag::where('name', $request->value)->first();
+        $tag = Tag::where('value', $request->tag)->first();
         if (!$tag)
             throw new ApiException(404, 'Tag not found');
 
