@@ -20,11 +20,14 @@ class ReactionController extends Controller
     // Добавление разрешённых реакций
     public function add(ReactionRequest $request)
     {
-        foreach ($request->reactions  as $reaction)
-            Reaction::create(['value'=>$reaction]);
+        foreach ($request->reactions as $reaction) {
+            // Проверяем, существует ли реакция с таким значением
+            if (!Reaction::where('value', $reaction)->exists()) {
+                Reaction::create(['value' => $reaction]);
+            }
+        }
 
         return response(null, 204);
-
     }
     // Удаление разрешённых реакций
     public function remove(ReactionRequest $request)
