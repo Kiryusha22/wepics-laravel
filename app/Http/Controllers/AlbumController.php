@@ -13,29 +13,57 @@ class AlbumController extends Controller
 {
     public function get($hash)
     {
-        $parentAlbum = Album::getByHash($hash);
-        if(!$parentAlbum->hasAccessCached(request()->user()))
+        $user = request()->user();
+
+        $targetAlbum = Album::getByHash($hash);
+        if(!$targetAlbum->hasAccessCached($user))
             throw new ApiException(403, 'Forbidden for you');
 
-        $localPath = "images$parentAlbum->path";
+        $localPath = "images$targetAlbum->path";
         $folders = Storage::directories($localPath);
 
-        $albumResponse = [];
+        $children = [];
         foreach ($folders as $folder) {
-            $path = $parentAlbum->path . basename($folder) .'/';
+            $path = $targetAlbum->path . basename($folder) .'/';
+
             $albumModel = Album::where('path', $path)->first();
             if (!$albumModel)
                 $albumModel = Album::create([
                     'name' => basename($path),
                     'path' => $path,
                     'hash' => Str::random(25),
-                    'parent_album_id' => $parentAlbum->id
+                    'parent_album_id' => $targetAlbum->id
                 ]);
-            $albumResponse[] = $albumModel;
+
+            if ($albumModel->hasAccessCached($user))
+                $children[] = $albumModel;
         }
-        return response([
-            'albums' => $albumResponse,
-        ]);
+
+        $parentsChain = [];
+        $parentId = $targetAlbum->parent_album_id;
+        while ($parentId) {
+            $parent = Album::find($parentId);
+            if (!$parent->hasAccessCached($user)) break;
+
+            $parentId = $parent->parent_album_id;
+            $parentsChain[] = $parent;
+        }
+
+        $response = ['name' => $targetAlbum->name];
+        if ($children) {
+            foreach ($children as $album)
+                $childrenRefined[$album->name] = ['hash' => $album->hash];
+
+            $response['children'] = $childrenRefined;
+        }
+        if ($parentsChain) {
+            foreach (array_reverse($parentsChain) as $album) {
+                if ($album->path === '/') $parentsChainRefined['/'] = ['hash' => $album->hash];
+                else             $parentsChainRefined[$album->name] = ['hash' => $album->hash];
+            }
+            $response['parentsChain'] = $parentsChainRefined;
+        }
+        return response($response);
     }
 
     public function create(FilenameCheckRequest $request, $hash)
