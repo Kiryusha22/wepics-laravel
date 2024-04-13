@@ -11,8 +11,9 @@ return new class extends Migration
         Schema::create('tokens', function (Blueprint $table) {
             $table->string   ('value', 255)->unique();
             $table->foreignId('user_id');
-            $table->primary(['value', 'user_id']);
             $table->timestamps();
+
+            $table->primary(['value', 'user_id']);
         });
     }
 

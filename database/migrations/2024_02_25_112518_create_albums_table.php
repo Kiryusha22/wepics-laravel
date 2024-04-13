@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('albums', function (Blueprint $table) {
             $table->id();
-            $table->string   ('name', 256);
-            $table->string   ('path', 1024);
+            $table->string   ('name', 255);
+            $table->string   ('path', 1023);
             $table->string   ('hash', 25)->unique();
             $table->foreignId('parent_album_id')
                 ->nullable()

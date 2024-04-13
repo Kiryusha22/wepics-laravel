@@ -9,14 +9,15 @@ class Tag extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'value', 'type'
-    ];
+    // Заполняемые поля
+    protected $fillable = ['value'];
 
+    // Поиск по значению
     static public function findFromString($string) {
         return Tag::where('value', $string)->first();
     }
 
+    // Связи
     public function images() {
         return $this->belongsToMany(Image::class, 'tag_image');
     }

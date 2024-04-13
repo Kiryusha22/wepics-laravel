@@ -9,11 +9,12 @@ class Token extends Model
 {
     use HasFactory;
 
+    // Заполняемые поля
     protected $fillable = [
-        'user_id',
-        'value'
+        'user_id', 'value'
     ];
 
+    // Связи
     public function user() {
         return $this->belongsTo(User::class);
     }

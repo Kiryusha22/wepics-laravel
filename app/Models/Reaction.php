@@ -7,9 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Reaction extends Model
 {
-    protected $fillable = [
-      'value'
-    ];
-
-
+    // Заполняемое поле
+    protected $fillable = ['value'];
 }

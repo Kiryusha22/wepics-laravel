@@ -15,19 +15,18 @@ class User extends Authenticatable
     use HasFactory;
     use Notifiable;
 
+    // Заполняемые поля
     protected $fillable = [
-        'nickname',
-        'password',
-        'login'
+        'nickname', 'password', 'login'
     ];
-    protected $hidden = [
-        'password',
-    ];
-    protected $casts = [
-        'password' => 'hashed',
-    ];
+    // Скрытие поля пароля
+    protected $hidden = ['password'];
+    // Хеширование пароля
+    protected $casts = ['password' => 'hashed'];
 
-    static public function getByToken($token): User {
+    // Получение модель пользователя по токену
+    static public function getByToken($token): User
+    {
         $cacheKey = "user:token=$token";
         $user = Cache::get($cacheKey);
         if (!$user) {
@@ -40,7 +39,10 @@ class User extends Authenticatable
         }
         return $user;
     }
-    public function generateToken(): string {
+
+    // Генерация токена
+    public function generateToken(): string
+    {
         $token = Token::create([
             'user_id' => $this->id,
             'value' => Str::random(255),
@@ -48,6 +50,7 @@ class User extends Authenticatable
         return $token->value;
     }
 
+    // Связи
     public function accessRights() {
         return $this->hasMany(AccessRight::class);
     }

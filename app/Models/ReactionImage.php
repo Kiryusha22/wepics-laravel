@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class ReactionImage extends Model
 {
+    // Заполняемые поля
     protected $fillable = [
-        'image_id',
-        'reaction_id',
-        'user_id'
+        'image_id', 'reaction_id', 'user_id'
     ];
+
+    // Связи
     public function image() {
         return $this->belongsToMany(Image::class);
     }

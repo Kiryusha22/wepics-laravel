@@ -12,21 +12,14 @@ class Image extends Model
     use HasFactory;
     use HasTags;
 
-    public static function getTagClassName(): string {
-        return Tag::class;
-    }
-
+    // Заполняемые поля
     protected $fillable = [
-        'name',
-        'hash',
-        'date',
-        'size',
-        'width',
-        'height',
-        'album_id',
+        'name', 'hash', 'date', 'size',
+        'width', 'height', 'album_id',
     ];
 
-    static public function getByHash($albumHash, $imageHash)
+    // Получение картинки по хешу
+    static public function getByHash($albumHash, $imageHash): Image
     {
         $album = Album::getByHash($albumHash);
         $image = Image
@@ -37,7 +30,12 @@ class Image extends Model
             throw new ApiException(404, "Image not found");
         return $image;
     }
+    // Получение имя класса, управляющий тегами на этой модели
+    public static function getTagClassName(): string {
+        return Tag::class;
+    }
 
+    // Связи
     public function album() {
         return $this->belongsTo(Album::class);
     }
