@@ -15,10 +15,34 @@ class AccessController extends Controller
         $album = Album::getByHash($hash);
 
         $rights = $album->accessRights;
-        if(count($rights) < 1)
-            throw new ApiException(200, 'Nobody has rights to this album');
+        if (count($rights) < 1)
+            return response(['message' => 'Nobody has rights to this album']);
 
-        return response($rights);
+        $allowed   = [];
+        $disallowed = [];
+        $isGuestAllowed = null;
+        foreach ($rights as $right) {
+            if ($right->user_id === null) {
+                $isGuestAllowed = (bool)$right->allowed;
+                continue;
+            }
+
+            if ($right->allowed) $allowed[] = [
+                'user_id' => $right->user_id,
+                'nickname' => $right->user->nickname
+            ];
+            else $disallowed[] = [
+                'user_id' => $right->user_id,
+                'nickname' => $right->user->nickname
+            ];
+        }
+        $response = [];
+        if ($isGuestAllowed !== null)
+                         $response['isGuestAllowed'] = $isGuestAllowed;
+        if ($allowed)    $response['listAllowed'   ] = $allowed;
+        if ($disallowed) $response['listDisallowed'] = $disallowed;
+
+        return response($response);
     }
     public function create(AccessRightRequest $request, $hash)
     {
