@@ -47,6 +47,7 @@ class ImageController extends Controller
             if ($imageModel) continue;
 
             $sizes = getimagesize(Storage::path($file));
+            if (!$sizes) continue;
 
             Image::create([
                 'name' => basename($file),
