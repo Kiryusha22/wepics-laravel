@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 26.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<style type="text/css">
+	.st0{display:none;}
+	.st1{display:inline;}
+	.st2{clip-path:url(#SVGID_00000031912375560114793820000001673583961340913821_);}
+	.st3{fill:#FFFFFF;}
+	.st4{display:none;fill:url(#SVGID_00000054259002579934911810000013944083542003645624_);}
+	.st5{fill:url(#SVGID_00000124154548806583162150000012542528275195913908_);}
+	.st6{fill:none;stroke:#FFFFFF;stroke-miterlimit:10;}
+	.st7{display:none;fill:none;stroke:#FFFFFF;stroke-miterlimit:10;}
+	.st8{fill:none;}
+	.st9{fill:url(#SVGID_00000078036454818885838860000004571378562749772203_);}
+	.st10{fill:url(#SVGID_00000085240675068829098330000010465533490904205969_);}
+	.st11{fill:url(#SVGID_00000148640240656969548400000012837181701391836600_);}
+</style>
+<g id="Слой_7" class="st0">
+	<rect x="-2" y="-2" class="st1" width="21" height="21"/>
+</g>
+<g>
+	<defs>
+		<circle id="SVGID_1_" cx="8" cy="8" r="8"/>
+	</defs>
+	<clipPath id="SVGID_00000170249573843058266300000014952642491793248387_">
+		<use xlink:href="#SVGID_1_"  style="overflow:visible;"/>
+	</clipPath>
+	<g style="clip-path:url(#SVGID_00000170249573843058266300000014952642491793248387_);">
+		<g id="Слой_6">
+			<circle class="st3" cx="8" cy="8" r="10"/>
+			
+				<linearGradient id="SVGID_00000022550053163159452280000003582685310352346247_" gradientUnits="userSpaceOnUse" x1="-6.1962" y1="16.1962" x2="22.1962" y2="-0.1962">
+				<stop  offset="0" style="stop-color:#296F7F"/>
+				<stop  offset="1" style="stop-color:#42BFEA"/>
+			</linearGradient>
+			
+				<rect x="-4" y="-4" style="display:none;fill:url(#SVGID_00000022550053163159452280000003582685310352346247_);" width="24" height="24"/>
+			
+				<linearGradient id="SVGID_00000125595431200906224160000005452314014677971342_" gradientUnits="userSpaceOnUse" x1="-0.6617" y1="13.0008" x2="16.6617" y2="2.9992">
+				<stop  offset="0" style="stop-color:#296F7F"/>
+				<stop  offset="1" style="stop-color:#42BFEA"/>
+			</linearGradient>
+			<circle style="fill:url(#SVGID_00000125595431200906224160000005452314014677971342_);" cx="8" cy="8" r="10"/>
+			<g>
+				<ellipse class="st6" cx="8" cy="8" rx="3.5" ry="8.5"/>
+				<line class="st6" x1="-0.5" y1="8" x2="16.5" y2="8"/>
+				<path class="st6" d="M1,13c4.1-2.5,9.9-2.5,14,0"/>
+				<path class="st6" d="M14,3"/>
+				<path class="st6" d="M2,3"/>
+				<path class="st6" d="M1,3c4.1,2.6,9.9,2.6,14,0"/>
+				<circle class="st7" cx="8" cy="8" r="8.5"/>
+			</g>
+		</g>
+		<circle class="st8" cx="8" cy="8" r="8"/>
+	</g>
+	<g style="clip-path:url(#SVGID_00000170249573843058266300000014952642491793248387_);">
+		
+			<linearGradient id="SVGID_00000122682128838127872520000014385768695877122475_" gradientUnits="userSpaceOnUse" x1="4" y1="20" x2="4" y2="6">
+			<stop  offset="0" style="stop-color:#191919"/>
+			<stop  offset="1" style="stop-color:#4D4D4D"/>
+		</linearGradient>
+		<polygon style="fill:url(#SVGID_00000122682128838127872520000014385768695877122475_);" points="12,20 4,6 -4,20 		"/>
+		
+			<linearGradient id="SVGID_00000168802347066048507830000001490166670385568923_" gradientUnits="userSpaceOnUse" x1="12" y1="20" x2="12" y2="10">
+			<stop  offset="0" style="stop-color:#353535"/>
+			<stop  offset="0" style="stop-color:#282828"/>
+			<stop  offset="1" style="stop-color:#4D4D4D"/>
+		</linearGradient>
+		<polygon style="fill:url(#SVGID_00000168802347066048507830000001490166670385568923_);" points="4,20 12,10 20,20 		"/>
+	</g>
+	<g style="clip-path:url(#SVGID_00000170249573843058266300000014952642491793248387_);">
+		
+			<linearGradient id="SVGID_00000060018351055390876460000002873624722598537102_" gradientUnits="userSpaceOnUse" x1="10.2498" y1="6.6654" x2="12.7502" y2="2.3346">
+			<stop  offset="0" style="stop-color:#FF5500"/>
+			<stop  offset="1" style="stop-color:#FBB03B"/>
+		</linearGradient>
+		<circle style="fill:url(#SVGID_00000060018351055390876460000002873624722598537102_);" cx="11.5" cy="4.5" r="2.5"/>
+	</g>
+</g>
+</svg>

@@ -1,0 +1,1 @@
+import{_ as o,c as s,a as e,b as c,w as a,r as n,o as r,d as _}from"./index-BKTBmLD0.js";const d={},i={class:"outer"},l={class:"card"},u=e("p",null,"404",-1);function f(m,p){const t=n("RouterLink");return r(),s("div",i,[e("div",l,[u,c(t,{class:"btn",to:"/"},{default:a(()=>[_("To Home")]),_:1})])])}const h=o(d,[["render",f]]);export{h as default};

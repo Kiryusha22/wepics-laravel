@@ -1,0 +1,84 @@
+{
+  "name": "Wepics",
+  "description": "Image board with easily view, navigate and share through a collection of images",
+  "short_name": "Wepics",
+  "start_url": ".",
+  "lang": "en",
+  "theme_color": "#000",
+  "display": "standalone",
+  "background_color": "#000",
+  "icons": [
+    {
+      "src": "./favicon/icon_x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon/icon_x24.png",
+      "sizes": "24x24",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon/icon_x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon/icon_x48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon/icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon/icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./favicon/maskable_icon_x24.png",
+      "sizes": "24x24",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./favicon/maskable_icon_x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./favicon/maskable_icon_x48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./favicon/maskable_icon_x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./favicon/maskable_icon_x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./favicon/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "./favicon/maskable_icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
+  
