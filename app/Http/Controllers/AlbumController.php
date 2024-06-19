@@ -20,7 +20,7 @@ class AlbumController extends Controller
             throw new ApiException(403, 'Forbidden for you');
 
         $localPath = "images$targetAlbum->path";
-        $folders = Storage::directories($localPath);
+        $folders = File::directories(Storage::path($localPath));
 
         $children = [];
         foreach ($folders as $folder) {

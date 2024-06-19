@@ -26,7 +26,7 @@ class ImageController extends Controller
     public function indexingImages($album): void
     {
         $path = "images$album->path";
-        $files = Storage::files($path);
+        $files = File::files(Storage::path($path));
         $allowedExtensions = array_column(ImageExtensionsEnum::cases(), 'value');
         foreach ($files as $file) {
             $extension = pathinfo($file, PATHINFO_EXTENSION);
@@ -39,21 +39,21 @@ class ImageController extends Controller
                 ->first();
             if ($imageModel) continue;
 
-            $hash = md5(Storage::get($file));
+            $hash = md5(File::get($file));
             $imageModel = Image
                 ::where('hash', $hash)
                 ->where('album_id', $album->id)
                 ->first();
             if ($imageModel) continue;
 
-            $sizes = getimagesize(Storage::path($file));
+            $sizes = getimagesize($file);
             if (!$sizes) continue;
 
             Image::create([
                 'name' => basename($file),
                 'hash' => $hash,
-                'date' => Carbon::createFromTimestamp(Storage::lastModified($file)),
-                'size' => Storage::size($file),
+                'date' => Carbon::createFromTimestamp(File::lastModified($file)),
+                'size' => File::size($file),
                 'width'  => $sizes[0],
                 'height' => $sizes[1],
                 'album_id' => $album->id,
