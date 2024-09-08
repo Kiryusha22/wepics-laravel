@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Exceptions\ApiDebugException;
 use App\Exceptions\ApiException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Album extends Model
         'name',
         'path',
         'hash',
+        'last_indexation',
         'parent_album_id',
     ];
 
@@ -78,8 +80,8 @@ class Album extends Model
         $allow = Cache::get($cacheKey);
 
         if ($allow === null) {
-            $allow = $this->hasAccess($user);
-            //$allow = Album::hasAccessFastById($this->id, $user?->id); // TODO: перейти на крутой метод
+            //$allow = $this->hasAccess($user);
+            $allow = Album::hasAccessFastById($this->id, $user?->id);
             Cache::put($cacheKey, $allow, 86400);
         }
         return $allow;
@@ -93,14 +95,58 @@ class Album extends Model
 
         if ($allow === null) {
             $album = Album::getByHash($hash);
-            $allow = $album->hasAccess($user);
-            //$allow = Album::hasAccessFastByHash($hash, $user?->id); // TODO: перейти на крутой метод
+            //$allow = $album->hasAccess($user);
+            $allow = Album::hasAccessFastByHash($hash, $user?->id);
             Cache::put($cacheKey, $allow, 86400);
         }
         return $allow;
     }
 
-    public static function hasAccessFastByHash(string $hash, int $userId = null) {
+    public static function hasAccessFastById(int $albumId, int $userId = null): bool {
+        $right = AccessRight
+            ::where('album_id', $albumId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$right && $userId)
+            $right = AccessRight
+                ::where('album_id', $albumId)
+                ->where('user_id', null)
+                ->first();
+
+        if ($right)
+            return $right->allowed;
+
+        $parentAlbumId = Album::find($albumId)->parent_album_id;
+        if ($parentAlbumId)
+            return Album::hasAccessFastById($parentAlbumId, $userId);
+
+        return false;
+    }
+    public static function hasAccessFastByHash(string $hash, int $userId = null): bool {
+        $album = Album::getByHash($hash);
+        $right = AccessRight
+            ::where('album_id', $album->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$right && $userId)
+            $right = AccessRight
+                ::where('album_id', $album->id)
+                ->where('user_id', null)
+                ->first();
+
+        if ($right)
+            return $right->allowed;
+
+        $parentAlbumId = $album->parent_album_id;
+        if ($parentAlbumId)
+            return Album::hasAccessFastById($parentAlbumId, $userId);
+
+        return false;
+    }
+
+    public static function hasAccessFastOldByHash(string $hash, int $userId = null) {
         $res = DB
             ::table('access_rights')
             ->rightJoin('albums', 'access_rights.album_id', '=', 'albums.id')
@@ -116,16 +162,16 @@ class Album extends Model
         return Album::hasAccessFastById($res->parent_album_id, $userId);
     }
 
-    public static function hasAccessFastById(int $albumId, int $userId = null): bool {
+    public static function hasAccessFastOldById(int $albumId, int $userId = null): bool {
         $res = DB
             ::table('access_rights')
             ->rightJoin('albums', 'access_rights.album_id', '=', 'albums.id')
             ->where('user_id', $userId)
-            ->where('albums_id', $albumId)
+            ->where('album_id', $albumId)
             ->select('allowed', 'parent_album_id', 'path')
             ->first();
         // TODO: сделать несколько селектов в одном запросе, а то where обнуляют все поиски альбома и path уже не чекнуть
-        throw new ApiException(500, [
+        throw new ApiDebugException([
             'res' => $res,
             'user_id' => $userId,
             'album_id' => $albumId,

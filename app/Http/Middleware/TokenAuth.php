@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Exceptions\ApiDebugException;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use Closure;
@@ -20,11 +21,16 @@ class TokenAuth
                 throw new ApiException(401, 'Token not provided');
         }
         else {
-            // Получение настоящего пользователь
+            // Получение пользователя
             $user = User::getByToken($tokenValue);
+
+            if (!$user)
+                // Если пользователь не настоящий, но заданный уровень доступа не "гость" —— выводить 401 ошибку
+                throw new ApiException(401, 'Token corrupted');
+
             if ($allowedLevel == 'admin' &&
                 !$user->is_admin)
-                // Если пользователь настоящий, но заданный уровень доступа "администратор" —— выводить 403 ошибку
+                // Если пользователь не админ, но заданный уровень доступа "администратор" —— выводить 403 ошибку
                 throw new ApiException(403, 'Forbidden for you');
 
             // Запись пользователя в запрос для последующих обработок в контроллерах
@@ -32,7 +38,6 @@ class TokenAuth
                 return $user;
             });
         }
-
         return $next($request);
     }
 }
