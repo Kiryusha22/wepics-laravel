@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ApiDebugException;
 use App\Exceptions\ApiException;
 use App\Http\Requests\FilenameCheckRequest;
 use App\Models\Album;
@@ -11,52 +12,107 @@ use Illuminate\Support\Str;
 
 class AlbumController extends Controller
 {
-    public function get($hash)
+    public static function indexingAlbumChildren(Album $album): array
     {
-        $user = request()->user();
+        // TODO: Перейти на свою индексацию через glob для быстрой и одновременной индексации картинок и папок (мб всех файлов)
+        // Получение пути к альбому и его папок
+        $localPath = "images$album->path";
+        $folders = Storage::directories($localPath);
+        $childrenInDB = $album->childAlbums->toArray();
 
-        $targetAlbum = Album::getByHash($hash);
-        if(!$targetAlbum->hasAccessCached($user))
-            throw new ApiException(403, 'Forbidden for you');
-
-        $localPath = "images$targetAlbum->path";
-        $folders = File::directories(Storage::path($localPath));
-
+        // Проход по папкам альбома для ответа (дочерние альбомы)
         $children = [];
         foreach ($folders as $folder) {
-            $path = $targetAlbum->path . basename($folder) .'/';
+            $path = $album->path . basename($folder) .'/';
 
-            $albumModel = Album::where('path', $path)->first();
-            if (!$albumModel)
-                $albumModel = Album::create([
+            // Проверка наличия в БД вложенного альбома, создание если нет
+            $key = array_search($path, array_column($childrenInDB, 'path'));
+            if ($key !== false) {
+                $childAlbum = $childrenInDB[$key];
+                unset($childrenInDB[$key]);
+                $childrenInDB = array_values($childrenInDB);
+            }
+            else {
+                $childAlbum = Album::create([
                     'name' => basename($path),
                     'path' => $path,
                     'hash' => Str::random(25),
-                    'parent_album_id' => $targetAlbum->id
+                    'parent_album_id' => $album->id
                 ]);
+            }
+            $children[] = $childAlbum;
+        }
+        // Удаление оставшихся альбомов в БД
+        Album::destroy(array_column($childrenInDB, 'id'));
 
-            if ($albumModel->hasAccessCached($user))
-                $children[] = $albumModel;
+        $album->last_indexation = now();
+        $album->save();
+        return $children;
+    }
+    public function reindex($hash)
+    {
+        // Получение пользователя
+        $user = request()->user();
+
+        // Получение альбома из БД и проверка доступа пользователю
+        $targetAlbum = Album::getByHash($hash);
+        if (!$targetAlbum->hasAccessCached($user))
+            throw new ApiException(403, 'Forbidden for you');
+
+        AlbumController::indexingAlbumChildren($targetAlbum);
+
+        ImageController::indexingImages($targetAlbum);
+
+        return response(null);
+    }
+    public function get($hash)
+    {
+        // Получение пользователя
+        $user = request()->user();
+
+        // Получение альбома из БД и проверка доступа пользователю
+        $targetAlbum = Album::getByHash($hash);
+        if (!$targetAlbum->hasAccessCached($user))
+            throw new ApiException(403, 'Forbidden for you');
+
+        // Получение вложенных альбомов из БД если индексировалось, иначе индексировать
+        //TODO: мб добавить опцию через сколько времени надо переиндексировать?
+        if ($targetAlbum->last_indexation === null)
+            $allowedChildren = AlbumController::indexingAlbumChildren($targetAlbum);
+        else {
+            $children = Album::where('parent_album_id', $targetAlbum->id)->get();
+            $allowedChildren = [];
+            foreach ($children as $child)
+                if ($child->hasAccessCached($user))
+                    $allowedChildren[] = $child;
         }
 
+        // Проход по родителям альбома для ответа (цепочка родителей)
         $parentsChain = [];
         $parentId = $targetAlbum->parent_album_id;
         while ($parentId) {
             $parent = Album::find($parentId);
-            if (!$parent->hasAccessCached($user)) break;
 
+            // Прерывание записи, если в БД нет альбома с таким ID или нет доступа к n-родительскому альбому
+            if (!$parent || !$parent->hasAccessCached($user)) break;
+
+            // Прерывание записи, если нет доступа к n-родительскому альбому
             $parentId = $parent->parent_album_id;
             $parentsChain[] = $parent;
         }
 
+        // Компактный объект ответа
         $response = ['name' => $targetAlbum->name];
-        if ($children) {
-            foreach ($children as $album)
+        if ($targetAlbum->last_indexation)
+            $response['last_indexation'] = $targetAlbum->last_indexation;
+
+        if (count($allowedChildren)) {
+            foreach ($allowedChildren as $album)
                 $childrenRefined[$album->name] = ['hash' => $album->hash];
 
             $response['children'] = $childrenRefined;
         }
-        if ($parentsChain) {
+        if (count($parentsChain)) {
             foreach (array_reverse($parentsChain) as $album) {
                 if ($album->path === '/') $parentsChainRefined['/'] = ['hash' => $album->hash];
                 else             $parentsChainRefined[$album->name] = ['hash' => $album->hash];

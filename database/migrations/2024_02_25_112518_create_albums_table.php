@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string   ('name', 255);
             $table->string   ('path', 1023);
             $table->string   ('hash', 25)->unique();
+            $table->dateTime ('last_indexation')->nullable();
             $table->foreignId('parent_album_id')
                 ->nullable()
                 ->references('id')

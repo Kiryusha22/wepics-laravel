@@ -45,6 +45,7 @@ Route
 ->prefix('albums/{album_hash}')
 ->group(function ($album) {
     $album->get('', 'get');
+    $album->get('reindex', 'reindex');
     $album->middleware('token.auth:admin')->group(function ($albumManage) {
         $albumManage->post  ('', 'create');
         $albumManage->patch ('', 'rename');
